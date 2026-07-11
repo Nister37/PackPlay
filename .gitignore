@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+tmp/
+out-tsc/
+
+# Nx
+.nx/cache
+.nx/workspace-data
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Terraform and Ansible local state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.retry
+infra/ansible/inventory.yml
+
+# Docker volumes (local)
+mysql_data/
+redis_data/
+
+# Agent bridge
+.agentbridge/
