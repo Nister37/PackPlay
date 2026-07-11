@@ -1,0 +1,41 @@
+services:
+  jenkins:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc/jenkins.yaml
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set in .env}
+      JENKINS_ADMIN_EMAIL: ${JENKINS_ADMIN_EMAIL:?set in .env}
+      JENKINS_URL: https://${JENKINS_DOMAIN:?set in .env}/
+    expose:
+      - "8080"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - ./casc:/var/jenkins_home/casc:ro
+    networks: [ci]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [jenkins]
+    environment:
+      JENKINS_DOMAIN: ${JENKINS_DOMAIN:?set in .env}
+      ACME_EMAIL: ${JENKINS_ADMIN_EMAIL:?set in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [ci]
+
+networks:
+  ci:
+
+volumes:
+  jenkins-home:
+  caddy-data:
+  caddy-config:

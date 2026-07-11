@@ -1,0 +1,9 @@
+configuration-as-code
+git
+github-branch-source
+pipeline-stage-view
+workflow-aggregator
+junit
+mailer
+timestamper
+ws-cleanup

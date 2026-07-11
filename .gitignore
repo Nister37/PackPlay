@@ -37,6 +37,14 @@ npm-debug.log*
 coverage/
 test-results/
 
+# Terraform and Ansible local state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.retry
+infra/ansible/inventory.yml
+
 # Docker volumes (local)
 mysql_data/
 redis_data/

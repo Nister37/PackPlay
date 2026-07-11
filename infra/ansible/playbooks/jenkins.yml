@@ -1,0 +1,97 @@
+---
+- name: Provision PackPlay Jenkins
+  hosts: jenkins
+  become: true
+  vars_prompt:
+    - name: jenkins_admin_password
+      prompt: Jenkins administrator password
+      private: true
+      confirm: true
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Ensure APT keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Install Docker repository key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Configure Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable"
+        filename: docker
+        state: present
+
+    - name: Install Docker Engine and Compose
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create deployment directory
+      ansible.builtin.file:
+        path: /opt/packplay/jenkins/casc
+        state: directory
+        mode: "0750"
+
+    - name: Copy Jenkins deployment files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0644"
+      loop:
+        - { src: ../../../jenkins/Dockerfile, dest: /opt/packplay/jenkins/Dockerfile }
+        - { src: ../../../jenkins/plugins.txt, dest: /opt/packplay/jenkins/plugins.txt }
+        - { src: ../../../jenkins/docker-compose.yml, dest: /opt/packplay/jenkins/docker-compose.yml }
+        - { src: ../../../jenkins/Caddyfile, dest: /opt/packplay/jenkins/Caddyfile }
+        - { src: ../../../jenkins/casc/jenkins.yaml, dest: /opt/packplay/jenkins/casc/jenkins.yaml }
+      notify: Restart Jenkins stack
+
+    - name: Write protected environment file
+      ansible.builtin.template:
+        src: ../templates/jenkins.env.j2
+        dest: /opt/packplay/jenkins/.env
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Restart Jenkins stack
+
+    - name: Start Jenkins stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/packplay/jenkins
+        build: always
+        state: present
+
+  handlers:
+    - name: Restart Jenkins stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/packplay/jenkins
+        build: always
+        state: restarted
