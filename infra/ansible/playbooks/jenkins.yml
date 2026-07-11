@@ -77,18 +77,18 @@
         dest: "{{ item.dest }}"
         mode: "0644"
       loop:
-        - { src: ../../../jenkins/Dockerfile, dest: /opt/packplay/jenkins/Dockerfile }
-        - { src: ../../../jenkins/plugins.txt, dest: /opt/packplay/jenkins/plugins.txt }
-        - { src: ../../../jenkins/docker-compose.yml, dest: /opt/packplay/jenkins/docker-compose.yml }
-        - { src: ../../../jenkins/Caddyfile, dest: /opt/packplay/jenkins/Caddyfile }
-        - { src: ../../../jenkins/casc/jenkins.yaml, dest: /opt/packplay/jenkins/casc/jenkins.yaml }
-        - { src: ../../../jenkins/agent/Dockerfile, dest: /opt/packplay/jenkins/agent/Dockerfile }
-        - { src: ../../../jenkins/agent/entrypoint.sh, dest: /opt/packplay/jenkins/agent/entrypoint.sh }
+        - { src: "{{ playbook_dir }}/../../../jenkins/Dockerfile", dest: /opt/packplay/jenkins/Dockerfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/plugins.txt", dest: /opt/packplay/jenkins/plugins.txt }
+        - { src: "{{ playbook_dir }}/../../../jenkins/docker-compose.yml", dest: /opt/packplay/jenkins/docker-compose.yml }
+        - { src: "{{ playbook_dir }}/../../../jenkins/Caddyfile", dest: /opt/packplay/jenkins/Caddyfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/casc/jenkins.yaml", dest: /opt/packplay/jenkins/casc/jenkins.yaml }
+        - { src: "{{ playbook_dir }}/../../../jenkins/agent/Dockerfile", dest: /opt/packplay/jenkins/agent/Dockerfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/agent/entrypoint.sh", dest: /opt/packplay/jenkins/agent/entrypoint.sh }
       notify: Restart Jenkins stack
 
     - name: Write protected environment file
       ansible.builtin.template:
-        src: ../templates/jenkins.env.j2
+        src: jenkins.env.j2
         dest: /opt/packplay/jenkins/.env
         owner: root
         group: root
