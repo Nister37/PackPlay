@@ -5,5 +5,7 @@ pipeline-stage-view
 workflow-aggregator
 junit
 mailer
+ssh-credentials
+ssh-slaves
 timestamper
 ws-cleanup

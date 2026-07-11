@@ -9,7 +9,7 @@ This setup intentionally has two CI paths:
 
 Jenkins results are informational. Do not configure the Jenkins status as a required GitHub merge check. This keeps merges available when time is limited while still making failures visible.
 
-The setup also demonstrates beginner-friendly Jenkins capabilities: a multibranch pipeline, conditional stages, timeouts, build retention, timestamps, JUnit reports, archived coverage, post-build actions, configuration as code, and reproducible plugins.
+The setup also demonstrates beginner-friendly Jenkins capabilities: a multibranch pipeline, conditional stages, timeouts, build retention, timestamps, JUnit reports, archived coverage, post-build actions, a dedicated build agent, configuration as code, and reproducible plugins.
 
 ## Prerequisites
 
@@ -126,7 +126,7 @@ Try these safely after the first successful build:
 
 - Back up the `jenkins-home` and `caddy-data` volumes before VM replacement.
 - Patch by rerunning Terraform and Ansible; do not hand-edit generated server files.
-- Jenkins has one executor to avoid overlapping builds on the starter VM.
-- The Docker socket is deliberately not mounted. Current Nx builds run directly in the Jenkins image. If integration tests later require Docker, use a dedicated agent rather than granting the controller root-equivalent socket access.
+- Jenkins has one executor on a dedicated build-agent container to avoid overlapping builds on the starter VM. The controller has zero executors, so repository code cannot read its administrator credential.
+- The Docker socket is deliberately not mounted. Current Nx builds run directly in the build-agent image. If integration tests later require Docker, add a narrowly scoped Docker-capable agent rather than granting the controller root-equivalent socket access.
 - The VM service account has no project roles. Add only narrowly scoped roles when a real deployment stage requires them.
 - Terraform state can contain sensitive infrastructure data; use a protected Google Cloud Storage backend before collaborating with multiple operators.

@@ -14,6 +14,16 @@ services:
     volumes:
       - jenkins-home:/var/jenkins_home
       - ./casc:/var/jenkins_home/casc:ro
+    secrets:
+      - agent_ssh_key
+    networks: [ci]
+
+  agent:
+    build:
+      context: ./agent
+    restart: unless-stopped
+    secrets:
+      - agent_ssh_public_key
     networks: [ci]
 
   caddy:
@@ -39,3 +49,9 @@ volumes:
   jenkins-home:
   caddy-data:
   caddy-config:
+
+secrets:
+  agent_ssh_key:
+    file: ./secrets/agent_ssh_key
+  agent_ssh_public_key:
+    file: ./secrets/agent_ssh_key.pub

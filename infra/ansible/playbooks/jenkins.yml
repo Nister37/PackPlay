@@ -16,6 +16,7 @@
           - curl
           - git
           - gnupg
+          - openssh-client
         state: present
         update_cache: true
 
@@ -56,9 +57,19 @@
 
     - name: Create deployment directory
       ansible.builtin.file:
-        path: /opt/packplay/jenkins/casc
+        path: "{{ item }}"
         state: directory
         mode: "0750"
+      loop:
+        - /opt/packplay/jenkins/casc
+        - /opt/packplay/jenkins/agent
+        - /opt/packplay/jenkins/secrets
+
+    - name: Generate the controller-to-agent SSH key
+      ansible.builtin.command:
+        cmd: ssh-keygen -q -t ed25519 -N "" -C packplay-jenkins-agent -f /opt/packplay/jenkins/secrets/agent_ssh_key
+        creates: /opt/packplay/jenkins/secrets/agent_ssh_key
+      no_log: true
 
     - name: Copy Jenkins deployment files
       ansible.builtin.copy:
@@ -71,6 +82,8 @@
         - { src: ../../../jenkins/docker-compose.yml, dest: /opt/packplay/jenkins/docker-compose.yml }
         - { src: ../../../jenkins/Caddyfile, dest: /opt/packplay/jenkins/Caddyfile }
         - { src: ../../../jenkins/casc/jenkins.yaml, dest: /opt/packplay/jenkins/casc/jenkins.yaml }
+        - { src: ../../../jenkins/agent/Dockerfile, dest: /opt/packplay/jenkins/agent/Dockerfile }
+        - { src: ../../../jenkins/agent/entrypoint.sh, dest: /opt/packplay/jenkins/agent/entrypoint.sh }
       notify: Restart Jenkins stack
 
     - name: Write protected environment file
