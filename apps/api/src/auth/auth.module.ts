@@ -1,0 +1,45 @@
+import { Module } from '@nestjs/common';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AuthController } from './auth.controller';
+import { AuthService } from './services/auth.service';
+import { ConsoleEmailService } from './services/console-email.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { EMAIL_SERVICE } from './interfaces';
+
+@Module({
+  imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): JwtModuleOptions => {
+        const expiresIn = configService.get('JWT_ACCESS_EXPIRATION', '15m');
+        return {
+          secret: configService.get<string>('JWT_SECRET', 'change-me-in-production'),
+          signOptions: {
+            expiresIn: expiresIn as `${number}m`,
+          },
+        };
+      },
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
+  ],
+  controllers: [AuthController],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: EMAIL_SERVICE,
+      useClass: ConsoleEmailService,
+    },
+  ],
+  exports: [AuthService, JwtStrategy],
+})
+export class AuthModule {}
