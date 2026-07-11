@@ -5,6 +5,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
+import { GroupsModule } from './groups/groups.module';
+import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { AuthModule } from './auth/auth.module';
     CommonModule,
     HealthModule,
     AuthModule,
+    GroupsModule,
+    InvitationsModule,
   ],
   providers: [
     {
