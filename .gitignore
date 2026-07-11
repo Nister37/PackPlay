@@ -33,16 +33,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Test coverage
+# Test coverage and results
 coverage/
-
-# Terraform and Ansible local state
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfplan
-*.retry
-infra/ansible/inventory.yml
+test-results/
 
 # Docker volumes (local)
 mysql_data/
