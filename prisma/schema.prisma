@@ -15,10 +15,12 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  identity              Identity?
-  sessions              Session[]
+  identity                Identity?
+  sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens   PasswordResetToken[]
+  passwordResetTokens     PasswordResetToken[]
+  groupMemberships        GroupMember[]
+  createdInvitations      GroupInvitation[]
 
   @@map("users")
 }
@@ -79,4 +81,58 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  sportType   String   @map("sport_type") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members     GroupMember[]
+  invitations GroupInvitation[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String          @id @default(uuid())
+  userId   String          @map("user_id")
+  groupId  String          @map("group_id")
+  role     GroupMemberRole @default(MEMBER)
+  joinedAt DateTime        @default(now()) @map("joined_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model GroupInvitation {
+  id          String    @id @default(uuid())
+  groupId     String    @map("group_id")
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  maxUses     Int?      @map("max_uses")
+  useCount    Int       @default(0) @map("use_count")
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  revokedAt   DateTime? @map("revoked_at")
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([expiresAt])
+  @@map("group_invitations")
 }
