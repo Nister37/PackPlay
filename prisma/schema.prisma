@@ -21,6 +21,8 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   groupMemberships        GroupMember[]
   createdInvitations      GroupInvitation[]
+  sportProfiles           SportProfile[]
+  checklists              Checklist[]
 
   @@map("users")
 }
@@ -81,6 +83,65 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+enum ActivityType {
+  TRAINING
+  COMPETITION
+  CASUAL
+  TRAVEL
+}
+
+model SportProfile {
+  id            String       @id @default(uuid())
+  userId        String       @map("user_id")
+  name          String       @db.VarChar(100)
+  activityTypes Json         @map("activity_types")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checklists Checklist[]
+
+  @@index([userId])
+  @@map("sport_profiles")
+}
+
+model Checklist {
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  sportProfileId String        @map("sport_profile_id")
+  name           String        @db.VarChar(200)
+  activityType   ActivityType? @map("activity_type")
+  isTemplate     Boolean       @default(false) @map("is_template")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sportProfile SportProfile   @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
+  items        EquipmentItem[]
+
+  @@index([sportProfileId])
+  @@index([userId])
+  @@map("checklists")
+}
+
+model EquipmentItem {
+  id          String   @id @default(uuid())
+  checklistId String   @map("checklist_id")
+  name        String   @db.VarChar(200)
+  quantity    Int      @default(1)
+  category    String?  @db.VarChar(100)
+  isMandatory Boolean  @default(false) @map("is_mandatory")
+  notes       String?  @db.Text
+  sortOrder   Int      @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@map("equipment_items")
 }
 
 enum GroupMemberRole {
