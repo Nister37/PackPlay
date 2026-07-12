@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 
 export const createSocket = (token: string): Socket => {
-  return io('http://localhost:3000/packing', {
+  return io('/packing', {
     auth: { token },
     transports: ['websocket'],
   });
