@@ -23,6 +23,9 @@ model User {
   createdInvitations      GroupInvitation[]
   sportProfiles           SportProfile[]
   checklists              Checklist[]
+  createdActivities       GroupActivity[]          @relation("createdActivities")
+  createdSharedItems      SharedItem[]             @relation("createdSharedItems")
+  sharedResponsibilities  SharedResponsibility[]
 
   @@map("users")
 }
@@ -102,6 +105,7 @@ model SportProfile {
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   checklists Checklist[]
+  activities GroupActivity[]
 
   @@index([userId])
   @@map("sport_profiles")
@@ -144,6 +148,15 @@ model EquipmentItem {
   @@map("equipment_items")
 }
 
+enum SharedResponsibilityStatus {
+  COMMITTED
+  PACKED
+  RELEASED
+  FORGOT
+  COULD_NOT_BRING
+  REPLACEMENT_ARRANGED
+}
+
 enum GroupMemberRole {
   OWNER
   ADMIN
@@ -160,6 +173,7 @@ model Group {
 
   members     GroupMember[]
   invitations GroupInvitation[]
+  activities  GroupActivity[]
 
   @@map("groups")
 }
@@ -196,4 +210,62 @@ model GroupInvitation {
   @@index([groupId])
   @@index([expiresAt])
   @@map("group_invitations")
+}
+
+model GroupActivity {
+  id             String        @id @default(uuid())
+  groupId        String        @map("group_id")
+  name           String        @db.VarChar(200)
+  sportProfileId String?       @map("sport_profile_id")
+  activityType   ActivityType  @map("activity_type")
+  date           DateTime?
+  createdById    String        @map("created_by_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  group        Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sportProfile SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
+  createdBy    User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
+  sharedItems  SharedItem[]
+
+  @@index([groupId])
+  @@map("group_activities")
+}
+
+model SharedItem {
+  id              String   @id @default(uuid())
+  groupActivityId String   @map("group_activity_id")
+  name            String   @db.VarChar(200)
+  requiredQuantity Int     @default(1) @map("required_quantity")
+  category        String?  @db.VarChar(100)
+  isMandatory     Boolean  @default(true) @map("is_mandatory")
+  notes           String?  @db.Text
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  groupActivity    GroupActivity         @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
+  createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
+  responsibilities SharedResponsibility[]
+
+  @@index([groupActivityId])
+  @@map("shared_items")
+}
+
+model SharedResponsibility {
+  id                String                    @id @default(uuid())
+  sharedItemId      String                    @map("shared_item_id")
+  userId            String                    @map("user_id")
+  committedQuantity Int                       @default(1) @map("committed_quantity")
+  packedQuantity    Int                       @default(0) @map("packed_quantity")
+  extraQuantity     Int                       @default(0) @map("extra_quantity")
+  status            SharedResponsibilityStatus @default(COMMITTED)
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+
+  sharedItem SharedItem @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sharedItemId, userId])
+  @@map("shared_responsibilities")
 }
