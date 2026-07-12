@@ -8,6 +8,7 @@ import { RedisService } from '../common/redis.service';
 describe('SharedEquipmentService', () => {
   let service: SharedEquipmentService;
   let prisma: jest.Mocked<any>;
+  let redis: jest.Mocked<any>;
 
   beforeEach(async () => {
     const mockPrisma = {
@@ -48,6 +49,7 @@ describe('SharedEquipmentService', () => {
 
     service = module.get<SharedEquipmentService>(SharedEquipmentService);
     prisma = module.get(PrismaService);
+    redis = module.get(RedisService);
   });
 
   it('should be defined', () => {
@@ -350,6 +352,81 @@ describe('SharedEquipmentService', () => {
       await expect(
         service.takeOver('item-1', 'user-1', { quantity: 1 }),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('cache invalidation', () => {
+    const ACTIVITY_ID = 'act-cache-1';
+    const ITEM_CACHE_KEY = `shared-items:activity:${ACTIVITY_ID}`;
+    const READINESS_CACHE_KEY = `readiness:activity:${ACTIVITY_ID}`;
+
+    it('invalidates shared-items and readiness cache after claimResponsibility', async () => {
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+
+      prisma.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          sharedItem: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'item-1',
+              requiredQuantity: 2,
+              responsibilities: [],
+            }),
+          },
+          sharedResponsibility: {
+            create: jest.fn().mockResolvedValue({ id: 'resp-1', status: SharedResponsibilityStatus.COMMITTED }),
+          },
+        };
+        return fn(tx);
+      });
+
+      await service.claimResponsibility('item-1', 'user-1', { quantity: 1 });
+
+      expect(redis.del).toHaveBeenCalledWith(ITEM_CACHE_KEY);
+      expect(redis.del).toHaveBeenCalledWith(READINESS_CACHE_KEY);
+    });
+
+    it('invalidates cache after releaseResponsibility', async () => {
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+
+      prisma.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          sharedResponsibility: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'resp-1',
+              status: SharedResponsibilityStatus.COMMITTED,
+            }),
+            update: jest.fn().mockResolvedValue({
+              id: 'resp-1',
+              status: SharedResponsibilityStatus.RELEASED,
+            }),
+          },
+        };
+        return fn(tx);
+      });
+
+      await service.releaseResponsibility('item-1', 'user-1');
+
+      expect(redis.del).toHaveBeenCalledWith(ITEM_CACHE_KEY);
+      expect(redis.del).toHaveBeenCalledWith(READINESS_CACHE_KEY);
+    });
+
+    it('does NOT invalidate cache when claimResponsibility throws', async () => {
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+
+      prisma.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          sharedItem: {
+            findUnique: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return fn(tx);
+      });
+
+      await expect(
+        service.claimResponsibility('item-999', 'user-1', { quantity: 1 }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(redis.del).not.toHaveBeenCalledWith(ITEM_CACHE_KEY);
     });
   });
 

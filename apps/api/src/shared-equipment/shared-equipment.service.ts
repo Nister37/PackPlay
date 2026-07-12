@@ -96,7 +96,7 @@ export class SharedEquipmentService {
       },
     });
 
-    await this.redis.del(`shared-items:activity:${activityId}`);
+    await this.invalidateActivityCache(activityId);
 
     return item;
   }
@@ -104,7 +104,7 @@ export class SharedEquipmentService {
   async updateSharedItem(activityId: string, itemId: string, dto: UpdateSharedItemDto) {
     const item = await this.findSharedItemOrThrow(activityId, itemId);
 
-    return this.prisma.sharedItem.update({
+    const updated = await this.prisma.sharedItem.update({
       where: { id: item.id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
@@ -114,11 +114,15 @@ export class SharedEquipmentService {
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
     });
+
+    await this.invalidateActivityCache(activityId);
+    return updated;
   }
 
   async deleteSharedItem(activityId: string, itemId: string) {
     await this.findSharedItemOrThrow(activityId, itemId);
     await this.prisma.sharedItem.delete({ where: { id: itemId } });
+    await this.invalidateActivityCache(activityId);
   }
 
   async listSharedItems(activityId: string) {
@@ -152,6 +156,23 @@ export class SharedEquipmentService {
     return result;
   }
 
+  // ─── Cache helpers ─────────────────────────────────────────────────────
+
+  private async invalidateActivityCache(activityId: string): Promise<void> {
+    await Promise.all([
+      this.redis.del(`shared-items:activity:${activityId}`),
+      this.redis.del(`readiness:activity:${activityId}`),
+    ]);
+  }
+
+  private async getActivityIdForItem(itemId: string): Promise<string | null> {
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: itemId },
+      select: { groupActivityId: true },
+    });
+    return item?.groupActivityId ?? null;
+  }
+
   // ─── Responsibilities ─────────────────────────────────────────────────
 
   async claimResponsibility(itemId: string, userId: string, dto: ClaimResponsibilityDto) {
@@ -164,7 +185,9 @@ export class SharedEquipmentService {
       });
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const activityId = await this.getActivityIdForItem(itemId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const item = await tx.sharedItem.findUnique({
         where: { id: itemId },
         include: { responsibilities: true },
@@ -220,10 +243,15 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    if (activityId) await this.invalidateActivityCache(activityId);
+    return result;
   }
 
   async releaseResponsibility(itemId: string, userId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const activityId = await this.getActivityIdForItem(itemId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
       });
@@ -250,6 +278,9 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    if (activityId) await this.invalidateActivityCache(activityId);
+    return result;
   }
 
   async packResponsibility(itemId: string, userId: string, dto: PackResponsibilityDto) {
