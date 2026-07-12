@@ -11,6 +11,10 @@ import { SportProfilesModule } from './sport-profiles/sport-profiles.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { EquipmentItemsModule } from './equipment-items/equipment-items.module';
 import { SharedEquipmentModule } from './shared-equipment/shared-equipment.module';
+import { PackingSessionsModule } from './packing-sessions/packing-sessions.module';
+import { ReadinessModule } from './readiness/readiness.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -27,6 +31,10 @@ import { SharedEquipmentModule } from './shared-equipment/shared-equipment.modul
     ChecklistsModule,
     EquipmentItemsModule,
     SharedEquipmentModule,
+    PackingSessionsModule,
+    ReadinessModule,
+    NotificationsModule,
+    RealtimeModule,
   ],
   providers: [
     {
