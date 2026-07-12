@@ -10,7 +10,18 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-u",
+          "packplay",
+          "-p${MYSQL_PASSWORD}",
+          "--silent",
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -33,7 +44,16 @@ services:
     restart: "no"
     environment:
       DATABASE_URL: mysql://packplay:${MYSQL_PASSWORD}@mysql:3306/packplay
-    command: ["npx", "prisma", "migrate", "deploy"]
+    command:
+      - sh
+      - -c
+      - >-
+        for attempt in $$(seq 1 24); do
+          npx prisma migrate deploy && exit 0;
+          echo "Database is not ready yet (attempt $$attempt/24)";
+          sleep 5;
+        done;
+        exit 1
     depends_on:
       mysql:
         condition: service_healthy

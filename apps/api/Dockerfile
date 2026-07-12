@@ -1,36 +1,24 @@
-FROM node:22-bookworm-slim AS build
+FROM node:22-slim
 
 WORKDIR /app
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
-
+# Install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+COPY apps/api/package.json ./apps/api/package.json
+RUN npm ci --no-audit --no-fund
 
-COPY nx.json tsconfig.base.json jest.preset.js eslint.config.mjs ./
-COPY apps/api ./apps/api
-COPY libs ./libs
+# Copy source
+COPY tsconfig.base.json nx.json jest.preset.js ./
 COPY prisma ./prisma
+COPY libs ./libs
+COPY apps/api ./apps/api
 
-RUN npx prisma generate && npx nx build api
+# Generate Prisma client
+RUN npx prisma generate
 
-FROM node:22-bookworm-slim AS runtime
+# Build
+RUN npx nx build api
 
-ENV NODE_ENV=production
-WORKDIR /app
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
-
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/dist/apps/api ./dist/apps/api
-COPY --from=build --chown=node:node /app/prisma ./prisma
-COPY --from=build --chown=node:node /app/package.json ./package.json
-
-USER node
 EXPOSE 3000
 
 CMD ["node", "dist/apps/api/main.js"]
