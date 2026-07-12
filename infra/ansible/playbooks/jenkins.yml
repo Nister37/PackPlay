@@ -1,0 +1,126 @@
+---
+- name: Provision PackPlay Jenkins
+  hosts: jenkins
+  become: true
+  vars_prompt:
+    - name: jenkins_admin_password
+      prompt: Jenkins administrator password
+      private: true
+      confirm: true
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - gnupg
+          - openssh-client
+          - python3-debian
+        state: present
+        update_cache: true
+
+    - name: Ensure APT keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Install Docker repository key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Configure Docker repository
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: [deb]
+        uris: https://download.docker.com/linux/debian
+        suites: [bookworm]
+        components: [stable]
+        architectures: [amd64]
+        signed_by: /etc/apt/keyrings/docker.asc
+        state: present
+
+    - name: Install Docker Engine and Compose
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create deployment directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0750"
+      loop:
+        - /opt/packplay/jenkins/casc
+        - /opt/packplay/jenkins/agent
+        - /opt/packplay/jenkins/secrets
+
+    - name: Generate the controller-to-agent SSH key
+      ansible.builtin.command:
+        cmd: ssh-keygen -q -t ed25519 -N "" -C packplay-jenkins-agent -f /opt/packplay/jenkins/secrets/agent_ssh_key
+        creates: /opt/packplay/jenkins/secrets/agent_ssh_key
+      no_log: true
+
+    - name: Copy Jenkins deployment files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0644"
+      loop:
+        - { src: "{{ playbook_dir }}/../../../jenkins/Dockerfile", dest: /opt/packplay/jenkins/Dockerfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/plugins.txt", dest: /opt/packplay/jenkins/plugins.txt }
+        - { src: "{{ playbook_dir }}/../../../jenkins/docker-compose.yml", dest: /opt/packplay/jenkins/docker-compose.yml }
+        - { src: "{{ playbook_dir }}/../../../jenkins/Caddyfile", dest: /opt/packplay/jenkins/Caddyfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/casc/jenkins.yaml", dest: /opt/packplay/jenkins/casc/jenkins.yaml }
+        - { src: "{{ playbook_dir }}/../../../jenkins/agent/Dockerfile", dest: /opt/packplay/jenkins/agent/Dockerfile }
+        - { src: "{{ playbook_dir }}/../../../jenkins/agent/entrypoint.sh", dest: /opt/packplay/jenkins/agent/entrypoint.sh }
+      notify: Restart Jenkins stack
+
+    - name: Write protected environment file
+      ansible.builtin.template:
+        src: jenkins.env.j2
+        dest: /opt/packplay/jenkins/.env
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Restart Jenkins stack
+
+    - name: Write protected Jenkins administrator password
+      ansible.builtin.copy:
+        content: "{{ jenkins_admin_password }}"
+        dest: /opt/packplay/jenkins/secrets/jenkins_admin_password
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Restart Jenkins stack
+
+    - name: Start Jenkins stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/packplay/jenkins
+        build: always
+        state: present
+
+  handlers:
+    - name: Restart Jenkins stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/packplay/jenkins
+        build: always
+        state: restarted

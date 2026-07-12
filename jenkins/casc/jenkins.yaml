@@ -1,0 +1,58 @@
+jenkins:
+  systemMessage: "PackPlay Jenkins - configuration managed as code"
+  numExecutors: 0
+  mode: NORMAL
+  scmCheckoutRetryCount: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${readFile:/run/secrets/jenkins_admin_password}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  crumbIssuer:
+    standard: {}
+  nodes:
+    - permanent:
+        name: "packplay-agent"
+        labelString: "packplay-agent linux node nx"
+        mode: NORMAL
+        numExecutors: 1
+        remoteFS: "/home/jenkins/agent"
+        launcher:
+          ssh:
+            host: "agent"
+            port: 22
+            javaPath: "/opt/java/openjdk/bin/java"
+            credentialsId: "packplay-agent-ssh"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 10
+            sshHostKeyVerificationStrategy:
+              manuallyTrustedKeyVerificationStrategy:
+                requireInitialManualTrust: false
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "NODE_OPTIONS"
+            value: "--max-old-space-size=2048"
+
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+    adminAddress: "${JENKINS_ADMIN_EMAIL}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: SYSTEM
+              id: "packplay-agent-ssh"
+              username: "jenkins"
+              description: "SSH credential used only to launch the isolated build agent"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${readFile:/run/secrets/agent_ssh_key}"

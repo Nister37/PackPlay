@@ -1,0 +1,11 @@
+all:
+  hosts:
+    jenkins:
+      ansible_host: "packplay-jenkins"
+      ansible_user: "your-os-login-user"
+      ansible_ssh_common_args: >-
+        -o ProxyCommand="gcloud compute start-iap-tunnel packplay-jenkins 22
+        --listen-on-stdin --project=your-gcp-project-id --zone=europe-central2-a"
+  vars:
+    jenkins_domain: "jenkins.example.com"
+    jenkins_admin_email: "admin@example.com"

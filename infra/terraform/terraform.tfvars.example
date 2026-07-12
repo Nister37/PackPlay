@@ -1,0 +1,4 @@
+project_id       = "your-gcp-project-id"
+jenkins_domain   = "jenkins.example.com"
+dns_managed_zone = null
+operator_members = ["user:jenkins-admin@example.com"]
