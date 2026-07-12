@@ -38,3 +38,32 @@ variable "machine_type" {
   type        = string
   default     = "e2-standard-2"
 }
+
+variable "operator_members" {
+  description = "IAM members allowed to administer the VM through OS Login and IAP, such as user:name@example.com."
+  type        = set(string)
+
+  validation {
+    condition = length(var.operator_members) > 0 && alltrue([
+      for member in var.operator_members : can(regex("^(user|group|serviceAccount):[^[:space:]]+$", member))
+    ])
+    error_message = "Provide at least one user:, group:, or serviceAccount: IAM member."
+  }
+}
+
+variable "deletion_protection" {
+  description = "Protect the Jenkins VM from accidental deletion. Disable explicitly before an intentional destroy."
+  type        = bool
+  default     = true
+}
+
+variable "snapshot_retention_days" {
+  description = "Number of days to retain daily Jenkins boot-disk snapshots."
+  type        = number
+  default     = 14
+
+  validation {
+    condition     = var.snapshot_retention_days >= 7 && var.snapshot_retention_days <= 365
+    error_message = "Snapshot retention must be between 7 and 365 days."
+  }
+}

@@ -17,6 +17,7 @@
           - git
           - gnupg
           - openssh-client
+          - python3-debian
         state: present
         update_cache: true
 
@@ -33,9 +34,14 @@
         mode: "0644"
 
     - name: Configure Docker repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable"
-        filename: docker
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: [deb]
+        uris: https://download.docker.com/linux/debian
+        suites: [bookworm]
+        components: [stable]
+        architectures: [amd64]
+        signed_by: /etc/apt/keyrings/docker.asc
         state: present
 
     - name: Install Docker Engine and Compose
@@ -90,6 +96,16 @@
       ansible.builtin.template:
         src: jenkins.env.j2
         dest: /opt/packplay/jenkins/.env
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Restart Jenkins stack
+
+    - name: Write protected Jenkins administrator password
+      ansible.builtin.copy:
+        content: "{{ jenkins_admin_password }}"
+        dest: /opt/packplay/jenkins/secrets/jenkins_admin_password
         owner: root
         group: root
         mode: "0600"

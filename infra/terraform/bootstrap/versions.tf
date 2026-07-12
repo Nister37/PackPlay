@@ -1,10 +1,6 @@
 terraform {
   required_version = ">= 1.7.0"
 
-  backend "gcs" {
-    prefix = "packplay/jenkins"
-  }
-
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -16,5 +12,4 @@ terraform {
 provider "google" {
   project = var.project_id
   region  = var.region
-  zone    = var.zone
 }

@@ -38,7 +38,11 @@ integration
 e2e
 ```
 
-`test`, `lint`, and `build` are required. Integration and end-to-end targets run when projects define them; Jenkins logs an explicit skip while those targets are not yet present. Unit-test projects can emit JUnit XML under `test-results/` for Jenkins test trends. Coverage under a `coverage/` directory is archived.
+`test` runs for every discovered commit. On `main`, `lint`, `build`, `openapi`, `integration`, and `e2e` are required. The pipeline fails its contract stage instead of silently skipping a missing full-pipeline target. Unit-test projects emit JUnit XML under `test-results/` for Jenkins test trends. Coverage under a `coverage/` directory is archived.
+
+## Operator setup
+
+The exact project, identity, billing, DNS, state-backend, certificate, GitHub credential, and live verification steps are maintained in the root [`INFRA_SETUP.md`](../INFRA_SETUP.md). Those steps require the infrastructure owner's hand and are intentionally not guessed or executed by repository automation.
 
 ## Create the infrastructure
 
@@ -55,7 +59,7 @@ Set the real Google Cloud project and Jenkins domain in `terraform.tfvars`. If t
 Review before applying:
 
 ```bash
-terraform init
+terraform init -backend-config="bucket=YOUR_STATE_BUCKET_NAME"
 terraform fmt -check
 terraform validate
 terraform plan -out=jenkins.tfplan
@@ -63,7 +67,7 @@ terraform apply jenkins.tfplan
 terraform output
 ```
 
-Terraform creates a dedicated VPC, firewall rules, static IP, service account, and Debian VM. SSH defaults to Google IAP's TCP-forwarding range. HTTPS is public because GitHub users and browsers must reach Jenkins; Jenkins itself requires login.
+Terraform creates a dedicated VPC, flow-logged subnet, firewall rules, static IP, least-privilege service account, retained boot disk, snapshot schedule, IAM access, and Debian VM. SSH defaults to Google IAP's TCP-forwarding range. HTTPS is public because GitHub users and browsers must reach Jenkins; Jenkins itself requires login.
 
 If using IAP, connect with:
 
@@ -81,7 +85,7 @@ ansible-galaxy collection install -r requirements.yml
 cp inventory.example.yml inventory.yml
 ```
 
-Replace the inventory values with Terraform's IP, your OS Login username, domain, and administrator email. Ensure the domain's A record resolves to the static IP before provisioning; Caddy cannot obtain a publicly trusted certificate until DNS is correct and ports 80/443 are reachable.
+Replace the inventory values with the confirmed project, zone, OS Login username, domain, and administrator email. The inventory routes SSH through IAP. Ensure the domain's A record resolves to the static IP before provisioning; Caddy cannot obtain a publicly trusted certificate until DNS is correct and ports 80/443 are reachable.
 
 Run:
 
@@ -89,7 +93,7 @@ Run:
 ansible-playbook playbooks/jenkins.yml
 ```
 
-The playbook asks for the Jenkins admin password without echoing or storing it in Git. Caddy obtains and renews the ACME certificate automatically. Certificate state and Jenkins state live in Docker volumes and survive container replacement.
+The playbook asks for the Jenkins admin password without echoing it and stores it in a root-only Docker secret file. Caddy obtains and renews the ACME certificate automatically. Certificate state and Jenkins state live in Docker volumes and survive container replacement; the retained disk and snapshot schedule protect them from ordinary VM replacement.
 
 Verify:
 
@@ -106,7 +110,7 @@ Use the real domain in both commands.
 2. Select **New Item**, name it `packplay-ci`, and choose **Multibranch Pipeline**.
 3. Add a **GitHub** branch source for `Nister37/PackPlay`.
 4. For a private repository, add a read-only fine-grained GitHub token as a Jenkins username/password credential.
-5. Enable branch discovery and pull-request discovery. Build PR heads (not the speculative merge commit) so PR commits follow the unit-test-only rule.
+5. Discover branches with **Exclude branches that are also filed as PRs**, discover origin PR heads, and disable fork discovery. This avoids duplicate builds and prevents untrusted public-fork execution.
 6. Use a webhook when Jenkins is publicly reachable. As a simpler fallback, enable periodic scanning every five minutes.
 7. Save and run **Scan Multibranch Pipeline Now**.
 
@@ -124,9 +128,9 @@ Try these safely after the first successful build:
 
 ## Operations and limitations
 
-- Back up the `jenkins-home` and `caddy-data` volumes before VM replacement.
+- Verify the daily disk snapshots and periodically test a restore; a listed snapshot is not proof of recoverability.
 - Patch by rerunning Terraform and Ansible; do not hand-edit generated server files.
 - Jenkins has one executor on a dedicated build-agent container to avoid overlapping builds on the starter VM. The controller has zero executors, so repository code cannot read its administrator credential.
 - The Docker socket is deliberately not mounted. Current Nx builds run directly in the build-agent image. If integration tests later require Docker, add a narrowly scoped Docker-capable agent rather than granting the controller root-equivalent socket access.
 - The VM service account has no project roles. Add only narrowly scoped roles when a real deployment stage requires them.
-- Terraform state can contain sensitive infrastructure data; use a protected Google Cloud Storage backend before collaborating with multiple operators.
+- Terraform uses a protected, versioned Google Cloud Storage backend bootstrapped by `infra/terraform/bootstrap`.

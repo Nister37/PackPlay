@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   jenkins:
     build:
@@ -6,7 +12,6 @@ services:
     environment:
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc/jenkins.yaml
-      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set in .env}
       JENKINS_ADMIN_EMAIL: ${JENKINS_ADMIN_EMAIL:?set in .env}
       JENKINS_URL: https://${JENKINS_DOMAIN:?set in .env}/
     expose:
@@ -16,20 +21,78 @@ services:
       - ./casc:/var/jenkins_home/casc:ro
     secrets:
       - agent_ssh_key
+      - jenkins_admin_password
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    logging: *default-logging
     networks: [ci]
 
   agent:
     build:
       context: ./agent
     restart: unless-stopped
+    depends_on:
+      mysql-ci:
+        condition: service_healthy
+      redis-ci:
+        condition: service_healthy
     secrets:
       - agent_ssh_public_key
+    healthcheck:
+      test: ["CMD-SHELL", "ssh-keyscan -T 2 localhost >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
     networks: [ci]
 
-  caddy:
-    image: caddy:2.10-alpine
+  mysql-ci:
+    image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
     restart: unless-stopped
-    depends_on: [jenkins]
+    environment:
+      MYSQL_ROOT_PASSWORD: packplay_ci_root
+      MYSQL_DATABASE: packplay_ci
+      MYSQL_USER: packplay_ci
+      MYSQL_PASSWORD: packplay_ci
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -ppackplay_ci_root --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      ci:
+        aliases: [mysql-ci]
+    logging: *default-logging
+
+  redis-ci:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "packplay_ci"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "packplay_ci", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      ci:
+        aliases: [redis-ci]
+    logging: *default-logging
+
+  caddy:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    depends_on:
+      jenkins:
+        condition: service_healthy
     environment:
       JENKINS_DOMAIN: ${JENKINS_DOMAIN:?set in .env}
       ACME_EMAIL: ${JENKINS_ADMIN_EMAIL:?set in .env}
@@ -41,6 +104,12 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     networks: [ci]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
 
 networks:
   ci:
@@ -55,3 +124,5 @@ secrets:
     file: ./secrets/agent_ssh_key
   agent_ssh_public_key:
     file: ./secrets/agent_ssh_key.pub
+  jenkins_admin_password:
+    file: ./secrets/jenkins_admin_password

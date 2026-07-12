@@ -19,6 +19,11 @@
     "outputDirectory": "test-results",
     "uniqueOutputName": "true"
   },
+  "overrides": {
+    "jest-junit": {
+      "uuid": "^11.1.0"
+    }
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",

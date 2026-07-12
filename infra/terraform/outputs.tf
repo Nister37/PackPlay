@@ -11,3 +11,8 @@ output "jenkins_url" {
 output "instance_name" {
   value = google_compute_instance.jenkins.name
 }
+
+output "iap_ssh_command" {
+  description = "Command for an authorized operator to connect through IAP."
+  value       = "gcloud compute ssh ${google_compute_instance.jenkins.name} --project=${var.project_id} --zone=${var.zone} --tunnel-through-iap"
+}
