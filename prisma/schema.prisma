@@ -26,6 +26,8 @@ model User {
   createdActivities       GroupActivity[]          @relation("createdActivities")
   createdSharedItems      SharedItem[]             @relation("createdSharedItems")
   sharedResponsibilities  SharedResponsibility[]
+  packingSessions         PackingSession[]
+  notifications           Notification[]
 
   @@map("users")
 }
@@ -121,9 +123,10 @@ model Checklist {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sportProfile SportProfile   @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
-  items        EquipmentItem[]
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sportProfile    SportProfile   @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
+  items           EquipmentItem[]
+  packingSessions PackingSession[]
 
   @@index([sportProfileId])
   @@index([userId])
@@ -142,7 +145,8 @@ model EquipmentItem {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklist        Checklist         @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  packingDecisions PackingDecision[]
 
   @@index([checklistId])
   @@map("equipment_items")
@@ -171,9 +175,10 @@ model Group {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  members     GroupMember[]
-  invitations GroupInvitation[]
-  activities  GroupActivity[]
+  members       GroupMember[]
+  invitations   GroupInvitation[]
+  activities    GroupActivity[]
+  notifications Notification[]
 
   @@map("groups")
 }
@@ -223,10 +228,11 @@ model GroupActivity {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  group        Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sportProfile SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
-  createdBy    User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
-  sharedItems  SharedItem[]
+  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sportProfile    SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
+  createdBy       User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
+  sharedItems     SharedItem[]
+  packingSessions PackingSession[]
 
   @@index([groupId])
   @@map("group_activities")
@@ -247,6 +253,7 @@ model SharedItem {
   groupActivity    GroupActivity         @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
   createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
   responsibilities SharedResponsibility[]
+  packingDecisions PackingDecision[]
 
   @@index([groupActivityId])
   @@map("shared_items")
@@ -268,4 +275,89 @@ model SharedResponsibility {
 
   @@unique([sharedItemId, userId])
   @@map("shared_responsibilities")
+}
+
+// ─── Packing Epic ───────────────────────────────────────────────────────────
+
+enum PackingSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum PackingDecisionType {
+  PACKED
+  NOT_PACKED
+  SKIPPED
+}
+
+enum PackingDecisionReason {
+  FORGOT
+  COULD_NOT_BRING
+  REPLACEMENT_ARRANGED
+  NOT_NEEDED
+}
+
+enum NotificationType {
+  ITEM_MISSING
+  ITEM_RELEASED
+  ITEM_CLAIMED
+  ITEM_PACKED
+  TAKEOVER_REQUESTED
+  COVERAGE_UPDATED
+  READINESS_UPDATED
+}
+
+model PackingSession {
+  id              String               @id @default(uuid())
+  userId          String               @map("user_id")
+  groupActivityId String?              @map("group_activity_id")
+  checklistId     String               @map("checklist_id")
+  status          PackingSessionStatus @default(IN_PROGRESS)
+  startedAt       DateTime             @default(now()) @map("started_at")
+  completedAt     DateTime?            @map("completed_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupActivity GroupActivity?  @relation(fields: [groupActivityId], references: [id], onDelete: SetNull)
+  checklist     Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  decisions     PackingDecision[]
+
+  @@index([userId, status])
+  @@map("packing_sessions")
+}
+
+model PackingDecision {
+  id               String                @id @default(uuid())
+  packingSessionId String                @map("packing_session_id")
+  equipmentItemId  String?               @map("equipment_item_id")
+  sharedItemId     String?               @map("shared_item_id")
+  decision         PackingDecisionType
+  reason           PackingDecisionReason?
+  notes            String?               @db.Text
+  decidedAt        DateTime              @default(now()) @map("decided_at")
+
+  packingSession PackingSession @relation(fields: [packingSessionId], references: [id], onDelete: Cascade)
+  equipmentItem  EquipmentItem? @relation(fields: [equipmentItemId], references: [id], onDelete: SetNull)
+  sharedItem     SharedItem?    @relation(fields: [sharedItemId], references: [id], onDelete: SetNull)
+
+  @@index([packingSessionId])
+  @@map("packing_decisions")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  groupId   String?          @map("group_id")
+  type      NotificationType
+  payload   Json
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@map("notifications")
 }
