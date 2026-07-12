@@ -7,6 +7,9 @@ import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { SportProfilesModule } from './sport-profiles/sport-profiles.module';
+import { ChecklistsModule } from './checklists/checklists.module';
+import { EquipmentItemsModule } from './equipment-items/equipment-items.module';
 
 @Module({
   imports: [
@@ -19,6 +22,9 @@ import { InvitationsModule } from './invitations/invitations.module';
     AuthModule,
     GroupsModule,
     InvitationsModule,
+    SportProfilesModule,
+    ChecklistsModule,
+    EquipmentItemsModule,
   ],
   providers: [
     {
