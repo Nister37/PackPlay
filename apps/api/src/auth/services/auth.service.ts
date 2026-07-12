@@ -264,11 +264,18 @@ export class AuthService {
       },
     });
 
-    await this.emailService.send({
-      to: user.email,
-      subject: 'PackPlay - Password Reset',
-      body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
-    });
+    try {
+      await this.emailService.send({
+        to: user.email,
+        subject: 'PackPlay - Password Reset',
+        body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send password reset email to ${user.email}.`,
+        (error as Error).message,
+      );
+    }
 
     this.logger.log(`Password reset requested for user: ${user.id}`);
   }
@@ -387,10 +394,17 @@ export class AuthService {
       },
     });
 
-    await this.emailService.send({
-      to: email,
-      subject: 'PackPlay - Verify Your Email',
-      body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
-    });
+    try {
+      await this.emailService.send({
+        to: email,
+        subject: 'PackPlay - Verify Your Email',
+        body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${email}. Token was created — user can request resend.`,
+        (error as Error).message,
+      );
+    }
   }
 }
