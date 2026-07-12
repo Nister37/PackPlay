@@ -639,41 +639,49 @@ export function CreateGroupPage() {
   const [activityId, setActivityId]   = useState<string | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
 
+  const wrapper = "max-w-lg mx-auto w-full";
+
   if (step === 1) {
     return (
-      <Step1
-        onSuccess={(gId, aId, name) => {
-          setGroupId(gId);
-          setActivityId(aId);
-          setGroupName(name);
-          setStep(2);
-        }}
-      />
+      <div className={wrapper}>
+        <Step1
+          onSuccess={(gId, aId, name) => {
+            setGroupId(gId);
+            setActivityId(aId);
+            setGroupName(name);
+            setStep(2);
+          }}
+        />
+      </div>
     );
   }
 
   if (step === 2 && groupId && activityId) {
     return (
-      <Step2
-        groupId={groupId}
-        activityId={activityId}
-        onBack={() => setStep(1)}
-        onSuccess={(token) => {
-          setInviteToken(token);
-          setStep(3);
-        }}
-      />
+      <div className={wrapper}>
+        <Step2
+          groupId={groupId}
+          activityId={activityId}
+          onBack={() => setStep(1)}
+          onSuccess={(token) => {
+            setInviteToken(token);
+            setStep(3);
+          }}
+        />
+      </div>
     );
   }
 
   if (step === 3 && groupId && inviteToken) {
     return (
-      <Step3
-        groupId={groupId}
-        groupName={groupName}
-        inviteToken={inviteToken}
-        onBack={() => setStep(2)}
-      />
+      <div className={wrapper}>
+        <Step3
+          groupId={groupId}
+          groupName={groupName}
+          inviteToken={inviteToken}
+          onBack={() => setStep(2)}
+        />
+      </div>
     );
   }
 

@@ -369,8 +369,9 @@ export class SharedEquipmentService {
 
   async takeOver(itemId: string, userId: string, dto: TakeOverDto) {
     const quantity = dto.quantity ?? 1;
+    const activityId = await this.getActivityIdForItem(itemId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const item = await tx.sharedItem.findUnique({
         where: { id: itemId },
         include: { responsibilities: true },
@@ -451,13 +452,12 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    if (activityId) await this.invalidateActivityCache(activityId);
+    return result;
   }
 
-  async transferResponsibility(
-    itemId: string,
-    userId: string,
-    dto: TransferResponsibilityDto,
-  ) {
+  async transferResponsibility(itemId: string, userId: string, dto: TransferResponsibilityDto) {
     return this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },

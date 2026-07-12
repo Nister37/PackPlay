@@ -1,11 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { LiveTakeoverAlert } from '@/components/notifications/LiveTakeoverAlert';
+import { useAuth } from '@/hooks/useAuth';
+import { claimLiveTakeoverAlert, getTopmostMissingItem } from '@/lib/liveTakeoverSession';
 import api from '@/lib/api';
-import type { Group, GroupMember, GroupActivity, GroupReadiness, SharedItemWithCoverage } from '@/types';
+import type {
+  Group,
+  GroupMember,
+  GroupActivity,
+  GroupReadiness,
+  SharedItemWithCoverage,
+} from '@/types';
 
 function getInitials(name: string): string {
   return name
@@ -117,7 +126,11 @@ function ItemManifest({ items }: { items: SharedItemWithCoverage[] }) {
 export function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [broadcastClicked, setBroadcastClicked] = useState(false);
+  const [takeoverItem, setTakeoverItem] = useState<SharedItemWithCoverage | null>(null);
+  const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
   const {
     data: group,
@@ -143,6 +156,8 @@ export function GroupDetailPage() {
 
   const activityId = activities?.[0]?.id;
 
+  const myRole = members?.find((m) => m.userId === user?.id)?.role ?? null;
+
   const { data: readiness, isLoading: readinessLoading } = useQuery<GroupReadiness>({
     queryKey: ['readiness', activityId],
     queryFn: () => api.get(`/activities/${activityId}/readiness`).then((r) => r.data),
@@ -151,9 +166,41 @@ export function GroupDetailPage() {
 
   const { data: sharedItems, isLoading: itemsLoading } = useQuery<SharedItemWithCoverage[]>({
     queryKey: ['shared-items', activityId],
-    queryFn: () =>
-      api.get(`/activities/${activityId}/shared-items`).then((r) => r.data),
+    queryFn: () => api.get(`/activities/${activityId}/shared-items`).then((r) => r.data),
     enabled: !!activityId,
+  });
+
+  useEffect(() => {
+    if (!groupId || !user?.id || itemsLoading) return;
+
+    const missingItem = getTopmostMissingItem(sharedItems);
+    if (missingItem && claimLiveTakeoverAlert(user.id, groupId)) {
+      setTakeoverItem(missingItem);
+    }
+  }, [groupId, itemsLoading, sharedItems, user?.id]);
+
+  const takeOverMutation = useMutation({
+    mutationFn: async (item: SharedItemWithCoverage) => {
+      const hasMissingOwner = item.responsibilities.some(
+        (responsibility) =>
+          responsibility.status === 'FORGOT' || responsibility.status === 'COULD_NOT_BRING',
+      );
+      const endpoint = hasMissingOwner ? 'take-over' : 'claim';
+      return api.post(`/shared-items/${item.id}/${endpoint}`, {
+        quantity: item.coverage.uncoveredQuantity,
+      });
+    },
+    onSuccess: () => {
+      setTakeoverItem(null);
+      setTakeoverError(null);
+      queryClient.invalidateQueries({ queryKey: ['shared-items', activityId] });
+      queryClient.invalidateQueries({ queryKey: ['readiness', activityId] });
+    },
+    onError: (error: { response?: { data?: { message?: string } } }) => {
+      setTakeoverError(
+        error.response?.data?.message ?? 'Could not take over this item. Please try again.',
+      );
+    },
   });
 
   const isPageLoading = groupLoading || membersLoading || activitiesLoading;
@@ -200,9 +247,7 @@ export function GroupDetailPage() {
           if (!memberCommitments[r.userId]) {
             memberCommitments[r.userId] = { name: r.user.name, items: [] };
           }
-          memberCommitments[r.userId].items.push(
-            `${item.name} ×${r.committedQuantity}`,
-          );
+          memberCommitments[r.userId].items.push(`${item.name} ×${r.committedQuantity}`);
         });
     });
   }
@@ -280,9 +325,7 @@ export function GroupDetailPage() {
               </p>
               {itemsLoading && <LoadingSpinner size="sm" />}
             </div>
-            {sharedItems && !itemsLoading && (
-              <ItemManifest items={sharedItems} />
-            )}
+            {sharedItems && !itemsLoading && <ItemManifest items={sharedItems} />}
           </section>
         )}
 
@@ -332,9 +375,7 @@ export function GroupDetailPage() {
                           ))}
                         </div>
                       ) : hasActivity ? (
-                        <p className="font-body text-xs text-brand-muted">
-                          Nothing committed yet
-                        </p>
+                        <p className="font-body text-xs text-brand-muted">Nothing committed yet</p>
                       ) : null}
                     </div>
                   </div>
@@ -385,8 +426,41 @@ export function GroupDetailPage() {
               Coming soon
             </p>
           )}
+          {myRole === 'OWNER' && (
+            <button
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    'Are you sure you want to delete this group? This action cannot be undone.',
+                  )
+                )
+                  return;
+                try {
+                  await api.delete(`/groups/${groupId}`);
+                  navigate('/dashboard');
+                } catch {
+                  alert('Failed to delete group.');
+                }
+              }}
+              className="w-full mt-3 min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors"
+            >
+              DELETE GROUP
+            </button>
+          )}
         </div>
       </div>
+      {takeoverItem ? (
+        <LiveTakeoverAlert
+          item={takeoverItem}
+          isTakingOver={takeOverMutation.isPending}
+          error={takeoverError}
+          onCannotHelp={() => setTakeoverItem(null)}
+          onTakeOver={() => {
+            setTakeoverError(null);
+            takeOverMutation.mutate(takeoverItem);
+          }}
+        />
+      ) : null}
     </PageLayout>
   );
 }

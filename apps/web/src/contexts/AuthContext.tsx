@@ -1,11 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
 import api from '@/lib/api';
+import { resetLiveTakeoverSession } from '@/lib/liveTakeoverSession';
 import type { User } from '@/types';
 
 interface AuthContextValue {
@@ -58,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
 
+    resetLiveTakeoverSession();
     setUser(loggedInUser);
   }, []);
 
@@ -73,16 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      resetLiveTakeoverSession();
       setUser(null);
     }
   }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, name: string) => {
-      await api.post('/auth/register', { email, password, name });
-    },
-    [],
-  );
+  const register = useCallback(async (email: string, password: string, name: string) => {
+    await api.post('/auth/register', { email, password, name });
+  }, []);
 
   return (
     <AuthContext.Provider
