@@ -1,0 +1,2544 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": ["status"],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check application health (DB + Redis)",
+        "tags": ["Health"]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        },
+        "summary": "Register a new account",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "operationId": "AuthController_verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified"
+          },
+          "400": {
+            "description": "Invalid or expired token"
+          }
+        },
+        "summary": "Verify email with token",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "operationId": "AuthController_resendVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification email sent if account exists"
+          }
+        },
+        "summary": "Resend verification email",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        },
+        "summary": "Login with email and password",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout and revoke session",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New token pair"
+          },
+          "401": {
+            "description": "Invalid or expired refresh token"
+          }
+        },
+        "summary": "Refresh access token",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/password-reset/request": {
+      "post": {
+        "operationId": "AuthController_passwordResetRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset email sent if account exists"
+          }
+        },
+        "summary": "Request password reset",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/password-reset/confirm": {
+      "post": {
+        "operationId": "AuthController_passwordResetConfirm",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful"
+          },
+          "400": {
+            "description": "Invalid or expired token"
+          }
+        },
+        "summary": "Set new password with reset token",
+        "tags": ["auth"]
+      }
+    },
+    "/groups": {
+      "post": {
+        "operationId": "GroupsController_createGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new group",
+        "tags": ["Groups"]
+      },
+      "get": {
+        "operationId": "GroupsController_listGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user's groups",
+        "tags": ["Groups"]
+      }
+    },
+    "/groups/{groupId}": {
+      "get": {
+        "operationId": "GroupsController_getGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get group details (members only)",
+        "tags": ["Groups"]
+      },
+      "patch": {
+        "operationId": "GroupsController_updateGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update group (OWNER/ADMIN only)",
+        "tags": ["Groups"]
+      },
+      "delete": {
+        "operationId": "GroupsController_deleteGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete group (OWNER only)",
+        "tags": ["Groups"]
+      }
+    },
+    "/groups/{groupId}/members": {
+      "get": {
+        "operationId": "GroupsController_listMembers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List group members",
+        "tags": ["Groups"]
+      }
+    },
+    "/groups/{groupId}/members/{memberId}": {
+      "delete": {
+        "operationId": "GroupsController_removeMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a member (OWNER/ADMIN)",
+        "tags": ["Groups"]
+      },
+      "patch": {
+        "operationId": "GroupsController_updateMemberRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update member role (OWNER only)",
+        "tags": ["Groups"]
+      }
+    },
+    "/groups/{groupId}/leave": {
+      "post": {
+        "operationId": "GroupsController_leaveGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave a group",
+        "tags": ["Groups"]
+      }
+    },
+    "/groups/{groupId}/invitations": {
+      "post": {
+        "operationId": "InvitationsController_createInvitation",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create an invitation link (OWNER/ADMIN)",
+        "tags": ["Invitations"]
+      },
+      "get": {
+        "operationId": "InvitationsController_listInvitations",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active invitations (OWNER/ADMIN)",
+        "tags": ["Invitations"]
+      }
+    },
+    "/invitations/{token}/info": {
+      "get": {
+        "operationId": "InvitationsController_getInvitationInfo",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview invitation info before joining",
+        "tags": ["Invitations"]
+      }
+    },
+    "/invitations/{token}/join": {
+      "post": {
+        "operationId": "InvitationsController_joinGroup",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join a group via invitation token",
+        "tags": ["Invitations"]
+      }
+    },
+    "/groups/{groupId}/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "InvitationsController_revokeInvitation",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke an invitation (OWNER/ADMIN)",
+        "tags": ["Invitations"]
+      }
+    },
+    "/sport-profiles": {
+      "post": {
+        "operationId": "SportProfilesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSportProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a sport profile",
+        "tags": ["Sport Profiles"]
+      },
+      "get": {
+        "operationId": "SportProfilesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user's sport profiles",
+        "tags": ["Sport Profiles"]
+      }
+    },
+    "/sport-profiles/{profileId}": {
+      "get": {
+        "operationId": "SportProfilesController_getOne",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get sport profile details",
+        "tags": ["Sport Profiles"]
+      },
+      "patch": {
+        "operationId": "SportProfilesController_update",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSportProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a sport profile",
+        "tags": ["Sport Profiles"]
+      },
+      "delete": {
+        "operationId": "SportProfilesController_delete",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a sport profile and its checklists",
+        "tags": ["Sport Profiles"]
+      }
+    },
+    "/checklists": {
+      "post": {
+        "operationId": "ChecklistsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChecklistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a checklist",
+        "tags": ["Checklists"]
+      },
+      "get": {
+        "operationId": "ChecklistsController_list",
+        "parameters": [
+          {
+            "name": "sportProfileId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user's checklists",
+        "tags": ["Checklists"]
+      }
+    },
+    "/checklists/{checklistId}": {
+      "get": {
+        "operationId": "ChecklistsController_getOne",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get checklist with items",
+        "tags": ["Checklists"]
+      },
+      "patch": {
+        "operationId": "ChecklistsController_update",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChecklistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update checklist metadata",
+        "tags": ["Checklists"]
+      },
+      "delete": {
+        "operationId": "ChecklistsController_delete",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a checklist",
+        "tags": ["Checklists"]
+      }
+    },
+    "/checklists/{checklistId}/duplicate": {
+      "post": {
+        "operationId": "ChecklistsController_duplicate",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Duplicate a checklist with all items",
+        "tags": ["Checklists"]
+      }
+    },
+    "/checklists/{checklistId}/save-as-template": {
+      "post": {
+        "operationId": "ChecklistsController_saveAsTemplate",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a checklist as template",
+        "tags": ["Checklists"]
+      }
+    },
+    "/checklists/{checklistId}/items": {
+      "post": {
+        "operationId": "EquipmentItemsController_addItem",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEquipmentItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add item to checklist",
+        "tags": ["Equipment Items"]
+      }
+    },
+    "/checklists/{checklistId}/items/{itemId}": {
+      "patch": {
+        "operationId": "EquipmentItemsController_updateItem",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEquipmentItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit an item",
+        "tags": ["Equipment Items"]
+      },
+      "delete": {
+        "operationId": "EquipmentItemsController_deleteItem",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove an item",
+        "tags": ["Equipment Items"]
+      }
+    },
+    "/checklists/{checklistId}/items/reorder": {
+      "patch": {
+        "operationId": "EquipmentItemsController_reorderItems",
+        "parameters": [
+          {
+            "name": "checklistId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderItemsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reorder items in a checklist",
+        "tags": ["Equipment Items"]
+      }
+    },
+    "/groups/{groupId}/activities": {
+      "post": {
+        "operationId": "GroupActivitiesController_createActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupActivityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a group activity",
+        "tags": ["Group Activities"]
+      },
+      "get": {
+        "operationId": "GroupActivitiesController_listActivities",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List group activities",
+        "tags": ["Group Activities"]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}": {
+      "get": {
+        "operationId": "GroupActivitiesController_getActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get activity with shared items",
+        "tags": ["Group Activities"]
+      }
+    },
+    "/activities/{activityId}/shared-items": {
+      "post": {
+        "operationId": "SharedItemsController_addSharedItem",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSharedItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a shared item to an activity",
+        "tags": ["Shared Items"]
+      },
+      "get": {
+        "operationId": "SharedItemsController_listSharedItems",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List shared items with coverage status",
+        "tags": ["Shared Items"]
+      }
+    },
+    "/activities/{activityId}/shared-items/{itemId}": {
+      "patch": {
+        "operationId": "SharedItemsController_updateSharedItem",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSharedItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update shared item details",
+        "tags": ["Shared Items"]
+      },
+      "delete": {
+        "operationId": "SharedItemsController_deleteSharedItem",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a shared item",
+        "tags": ["Shared Items"]
+      }
+    },
+    "/shared-items/{itemId}/claim": {
+      "post": {
+        "operationId": "ResponsibilitiesController_claim",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimResponsibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Claim responsibility for a shared item",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/release": {
+      "post": {
+        "operationId": "ResponsibilitiesController_release",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Release responsibility for a shared item",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/pack": {
+      "post": {
+        "operationId": "ResponsibilitiesController_pack",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackResponsibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark responsibility as packed",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/extra": {
+      "post": {
+        "operationId": "ResponsibilitiesController_extra",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtraResponsibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring extra units",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/report-missing": {
+      "post": {
+        "operationId": "ResponsibilitiesController_reportMissing",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportMissingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report item as missing (FORGOT/COULD_NOT_BRING/REPLACEMENT_ARRANGED)",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/take-over": {
+      "post": {
+        "operationId": "ResponsibilitiesController_takeOver",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakeOverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take over from a missing item",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/transfer": {
+      "post": {
+        "operationId": "ResponsibilitiesController_transfer",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferResponsibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transfer responsibility to another member",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/shared-items/{itemId}/coverage": {
+      "get": {
+        "operationId": "ResponsibilitiesController_getCoverage",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get coverage status for a shared item",
+        "tags": ["Shared Responsibilities"]
+      }
+    },
+    "/packing-sessions": {
+      "post": {
+        "operationId": "PackingSessionsController_startSession",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartPackingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a new packing session",
+        "tags": ["Packing Sessions"]
+      },
+      "get": {
+        "operationId": "PackingSessionsController_listSessions",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["IN_PROGRESS", "COMPLETED", "ABANDONED"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user packing sessions",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/packing-sessions/{sessionId}": {
+      "get": {
+        "operationId": "PackingSessionsController_getSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get packing session details with decisions",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/packing-sessions/{sessionId}/decisions": {
+      "post": {
+        "operationId": "PackingSessionsController_recordDecision",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a packing decision",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/packing-sessions/{sessionId}/complete": {
+      "post": {
+        "operationId": "PackingSessionsController_completeSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete a packing session",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/packing-sessions/{sessionId}/abandon": {
+      "post": {
+        "operationId": "PackingSessionsController_abandonSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Abandon a packing session",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/packing-sessions/{sessionId}/remaining": {
+      "get": {
+        "operationId": "PackingSessionsController_getRemainingItems",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get remaining mandatory items for a session",
+        "tags": ["Packing Sessions"]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_listNotifications",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user notifications (paginated)",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a notification as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/activities/{activityId}/readiness": {
+      "get": {
+        "operationId": "ReadinessController_getGroupReadiness",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get group readiness for an activity",
+        "tags": ["Readiness"]
+      }
+    },
+    "/packing-sessions/{sessionId}/readiness": {
+      "get": {
+        "operationId": "ReadinessController_getPersonalReadiness",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get personal readiness for a packing session",
+        "tags": ["Readiness"]
+      }
+    }
+  },
+  "info": {
+    "title": "PackPlay API",
+    "description": "PackPlay backend API for group equipment management",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "StrongP@ss1",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "example": "John"
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "VerifyEmailDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Email verification token"
+          }
+        },
+        "required": ["token"]
+      },
+      "ResendVerificationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          }
+        },
+        "required": ["email"]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "StrongP@ss1"
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token"
+          }
+        },
+        "required": ["refreshToken"]
+      },
+      "PasswordResetRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          }
+        },
+        "required": ["email"]
+      },
+      "PasswordResetConfirmDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Password reset token"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "NewStrongP@ss1",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": ["token", "newPassword"]
+      },
+      "CreateGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Group name",
+            "example": "Sunday Football"
+          },
+          "description": {
+            "type": "string",
+            "description": "Group description",
+            "example": "Weekly football meetup"
+          },
+          "sportType": {
+            "type": "string",
+            "description": "Sport type",
+            "example": "football"
+          }
+        },
+        "required": ["name", "sportType"]
+      },
+      "UpdateGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Group name",
+            "example": "Sunday Football"
+          },
+          "description": {
+            "type": "string",
+            "description": "Group description",
+            "example": "Weekly football meetup"
+          },
+          "sportType": {
+            "type": "string",
+            "description": "Sport type",
+            "example": "football"
+          }
+        }
+      },
+      "UpdateMemberRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "New role for the member",
+            "enum": ["ADMIN", "MEMBER"]
+          }
+        },
+        "required": ["role"]
+      },
+      "CreateInvitationDto": {
+        "type": "object",
+        "properties": {
+          "expiresInHours": {
+            "type": "number",
+            "description": "Hours until expiration (default: 72)",
+            "example": 48
+          },
+          "maxUses": {
+            "type": "number",
+            "description": "Maximum number of uses (null = unlimited)",
+            "example": 10
+          }
+        }
+      },
+      "CreateSportProfileDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Sport profile name",
+            "example": "Volleyball"
+          },
+          "activityTypes": {
+            "type": "array",
+            "description": "Activity types for this sport",
+            "example": ["TRAINING", "COMPETITION"],
+            "items": {
+              "type": "string",
+              "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"]
+            }
+          }
+        },
+        "required": ["name", "activityTypes"]
+      },
+      "UpdateSportProfileDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Sport profile name",
+            "example": "Beach Volleyball"
+          },
+          "activityTypes": {
+            "type": "array",
+            "description": "Activity types for this sport",
+            "example": ["TRAINING", "CASUAL"],
+            "items": {
+              "type": "string",
+              "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"]
+            }
+          }
+        }
+      },
+      "CreateChecklistDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Checklist name",
+            "example": "Match day gear"
+          },
+          "sportProfileId": {
+            "type": "string",
+            "description": "Sport profile ID",
+            "example": "uuid"
+          },
+          "activityType": {
+            "type": "string",
+            "description": "Activity type filter",
+            "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"],
+            "example": "COMPETITION"
+          }
+        },
+        "required": ["name", "sportProfileId"]
+      },
+      "UpdateChecklistDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Checklist name",
+            "example": "Updated gear list"
+          },
+          "activityType": {
+            "type": "string",
+            "description": "Activity type filter",
+            "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"],
+            "example": "TRAINING"
+          }
+        }
+      },
+      "CreateEquipmentItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Item name",
+            "example": "Knee pads"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity",
+            "example": 1,
+            "default": 1
+          },
+          "category": {
+            "type": "string",
+            "description": "Item category",
+            "example": "Protection"
+          },
+          "isMandatory": {
+            "type": "boolean",
+            "description": "Whether item is mandatory",
+            "default": false
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes",
+            "example": "Size L"
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateEquipmentItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Item name",
+            "example": "Knee pads XL"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity",
+            "example": 2
+          },
+          "category": {
+            "type": "string",
+            "description": "Item category",
+            "example": "Protection"
+          },
+          "isMandatory": {
+            "type": "boolean",
+            "description": "Whether item is mandatory"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes"
+          }
+        }
+      },
+      "ReorderItemEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Item ID"
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "New sort order",
+            "example": 0
+          }
+        },
+        "required": ["id", "sortOrder"]
+      },
+      "ReorderItemsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Array of items with new sort orders",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReorderItemEntry"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "CreateGroupActivityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSharedItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSharedItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ClaimResponsibilityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PackResponsibilityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ExtraResponsibilityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ReportMissingDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TakeOverDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferResponsibilityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "StartPackingSessionDto": {
+        "type": "object",
+        "properties": {
+          "checklistId": {
+            "type": "string",
+            "description": "Checklist to pack from"
+          },
+          "groupActivityId": {
+            "type": "string",
+            "description": "Group activity ID for group packing sessions"
+          }
+        },
+        "required": ["checklistId"]
+      },
+      "RecordDecisionDto": {
+        "type": "object",
+        "properties": {
+          "equipmentItemId": {
+            "type": "string",
+            "description": "Equipment item ID (personal item)"
+          },
+          "sharedItemId": {
+            "type": "string",
+            "description": "Shared item ID (group item)"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["PACKED", "NOT_PACKED", "SKIPPED"]
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["FORGOT", "COULD_NOT_BRING", "REPLACEMENT_ARRANGED", "NOT_NEEDED"]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes"
+          }
+        },
+        "required": ["decision"]
+      }
+    }
+  }
+}

@@ -5,7 +5,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GroupMemberRole } from '@prisma/client';
+import * as QRCode from 'qrcode';
 import { PrismaService } from '../common/prisma.service';
 import { generateToken, hashToken } from '../auth/token.util';
 import { AppErrorCode } from '@packplay/common';
@@ -15,7 +17,10 @@ const DEFAULT_EXPIRY_HOURS = 72;
 
 @Injectable()
 export class InvitationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async createInvitation(groupId: string, userId: string, dto: CreateInvitationDto) {
     const expiresInHours = dto.expiresInHours ?? DEFAULT_EXPIRY_HOURS;
@@ -34,11 +39,14 @@ export class InvitationsService {
       },
     });
 
+    const qrDataUrl = await this.generateQrDataUrl(token);
+
     return {
       id: invitation.id,
       token,
       expiresAt: invitation.expiresAt,
       maxUses: invitation.maxUses,
+      qrDataUrl,
     };
   }
 
@@ -151,6 +159,33 @@ export class InvitationsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getInvitationForQr(groupId: string, invitationId: string): Promise<void> {
+    const invitation = await this.prisma.groupInvitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!invitation || invitation.groupId !== groupId) {
+      throw new NotFoundException({
+        code: AppErrorCode.NOT_FOUND,
+        message: 'Invitation not found',
+      });
+    }
+
+    this.validateInvitation(invitation);
+  }
+
+  async generateQrBuffer(token: string): Promise<Buffer> {
+    const corsOrigin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
+    const url = `${corsOrigin}/invitations/${token}/join`;
+    return QRCode.toBuffer(url, { type: 'png', width: 300 });
+  }
+
+  private async generateQrDataUrl(token: string): Promise<string> {
+    const corsOrigin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
+    const url = `${corsOrigin}/invitations/${token}/join`;
+    return QRCode.toDataURL(url, { type: 'image/png', width: 300 });
   }
 
   private validateInvitation(invitation: {

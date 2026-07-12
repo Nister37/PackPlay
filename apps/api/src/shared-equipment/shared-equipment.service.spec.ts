@@ -3,6 +3,7 @@ import { ConflictException, NotFoundException, BadRequestException } from '@nest
 import { SharedResponsibilityStatus } from '@prisma/client';
 import { SharedEquipmentService } from './shared-equipment.service';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 
 describe('SharedEquipmentService', () => {
   let service: SharedEquipmentService;
@@ -30,10 +31,18 @@ describe('SharedEquipmentService', () => {
       $transaction: jest.fn(),
     };
 
+    const mockRedis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPattern: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SharedEquipmentService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: RedisService, useValue: mockRedis },
       ],
     }).compile();
 

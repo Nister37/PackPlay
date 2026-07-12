@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PackingSessionsService } from './packing-sessions.service';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PackingGateway } from '../realtime/packing.gateway';
 import { PackingSessionStatus } from '@prisma/client';
@@ -25,6 +26,7 @@ describe('PackingSessionsService', () => {
 
     notificationsService = {
       createNotification: jest.fn(),
+      createNotificationsBatch: jest.fn(),
     };
 
     gateway = {
@@ -33,10 +35,18 @@ describe('PackingSessionsService', () => {
       emitToUser: jest.fn(),
     };
 
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPattern: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PackingSessionsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: RedisService, useValue: redis },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: PackingGateway, useValue: gateway },
       ],

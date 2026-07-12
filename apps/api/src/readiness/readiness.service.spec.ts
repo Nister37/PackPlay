@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ReadinessService } from './readiness.service';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 
 describe('ReadinessService', () => {
   let service: ReadinessService;
@@ -13,10 +14,18 @@ describe('ReadinessService', () => {
       groupActivity: { findUnique: jest.fn() },
     };
 
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPattern: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReadinessService,
         { provide: PrismaService, useValue: prisma },
+        { provide: RedisService, useValue: redis },
       ],
     }).compile();
 
@@ -163,10 +172,8 @@ describe('ReadinessService', () => {
         },
       });
 
-      // Member packing sessions
-      prisma.packingSession.findMany
-        .mockResolvedValueOnce([]) // user-1 has no session
-        .mockResolvedValueOnce([]); // user-2 has no session
+      // Single findMany call returns no sessions for any member
+      prisma.packingSession.findMany.mockResolvedValue([]);
 
       const result = await service.getGroupReadiness('activity-1');
       expect(result.totalSharedItems).toBe(3);
@@ -204,6 +211,8 @@ describe('ReadinessService', () => {
         group: { members: [] },
       });
 
+      prisma.packingSession.findMany.mockResolvedValue([]);
+
       const result = await service.getGroupReadiness('activity-1');
       expect(result.groupPercentage).toBe(100);
     });
@@ -225,9 +234,11 @@ describe('ReadinessService', () => {
         },
       });
 
-      prisma.packingSession.findMany.mockResolvedValueOnce([
+      // Single findMany with distinct: ['userId'] returns the latest session per user
+      prisma.packingSession.findMany.mockResolvedValue([
         {
           id: 'session-1',
+          userId: 'user-1',
           checklist: {
             items: [{ id: 'item-1' }, { id: 'item-2' }],
           },

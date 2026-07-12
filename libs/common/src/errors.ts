@@ -57,6 +57,9 @@ export enum AppErrorCode {
 
   // Notifications
   NOTIFICATION_NOT_FOUND = 'NOTIFICATION_NOT_FOUND',
+
+  // Concurrency
+  CONCURRENT_MODIFICATION = 'CONCURRENT_MODIFICATION',
 }
 
 export class AppError extends Error {

@@ -8,6 +8,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {
     this.client = new Redis({
+      lazyConnect: true,
       host: this.configService.get<string>('REDIS_HOST') ?? 'localhost',
       port: this.configService.get<number>('REDIS_PORT') ?? 6379,
       password: this.configService.get<string>('REDIS_PASSWORD') ?? undefined,
@@ -16,7 +17,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    // Connection is established in constructor; verify it's alive
+    await this.client.connect();
     await this.client.ping();
   }
 
@@ -30,5 +31,25 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   getClient(): Redis {
     return this.client;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const data = await this.client.get(key);
+    return data ? JSON.parse(data) : null;
+  }
+
+  async set(key: string, value: unknown, ttlSeconds = 60): Promise<void> {
+    await this.client.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+  }
+
+  async del(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
+  async delByPattern(pattern: string): Promise<void> {
+    const keys = await this.client.keys(pattern);
+    if (keys.length > 0) {
+      await this.client.del(...keys);
+    }
   }
 }

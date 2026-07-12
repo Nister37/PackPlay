@@ -25,6 +25,18 @@ export class NotificationsService {
     });
   }
 
+  async createNotificationsBatch(inputs: CreateNotificationInput[]) {
+    if (inputs.length === 0) return { count: 0 };
+    return this.prisma.notification.createMany({
+      data: inputs.map((input) => ({
+        userId: input.userId,
+        groupId: input.groupId ?? null,
+        type: input.type as NotificationType,
+        payload: input.payload as any,
+      })),
+    });
+  }
+
   async listNotifications(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
 

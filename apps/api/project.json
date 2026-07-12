@@ -6,13 +6,17 @@
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "@nx/webpack:webpack",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/api",
         "tsConfig": "apps/api/tsconfig.app.json",
         "main": "apps/api/src/main.ts",
-        "assets": []
+        "assets": [],
+        "target": "node",
+        "compiler": "tsc",
+        "webpackConfig": "apps/api/webpack.config.js",
+        "generatePackageJson": true
       }
     },
     "serve": {
@@ -33,6 +37,13 @@
       "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": ["apps/api/src/**/*.ts"]
+      }
+    },
+    "openapi": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/openapi.json"],
+      "options": {
+        "command": "ts-node --project tsconfig.base.json --transpile-only -r tsconfig-paths/register apps/api/src/openapi.ts"
       }
     }
   }

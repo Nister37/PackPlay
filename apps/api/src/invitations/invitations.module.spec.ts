@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 import { InvitationsModule } from './invitations.module';
 import { InvitationsService } from './invitations.service';
 import { InvitationsController } from './invitations.controller';
@@ -11,7 +12,7 @@ describe('InvitationsModule', () => {
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
-      imports: [CommonModule, InvitationsModule],
+      imports: [ConfigModule.forRoot({ isGlobal: true }), CommonModule, InvitationsModule],
     })
       .overrideProvider(PrismaService)
       .useValue({

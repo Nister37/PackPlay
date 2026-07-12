@@ -181,4 +181,32 @@ export class GroupsService {
       where: { groupId_userId: { groupId, userId } },
     });
   }
+
+  async transferOwnership(groupId: string, currentUserId: string, targetUserId: string) {
+    const targetMembership = await this.prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId: targetUserId } },
+    });
+
+    if (!targetMembership) {
+      throw new BadRequestException({
+        code: AppErrorCode.TRANSFER_TARGET_NOT_MEMBER,
+        message: 'Target user is not a member of this group',
+      });
+    }
+
+    const [updatedCurrent, updatedTarget] = await this.prisma.$transaction([
+      this.prisma.groupMember.update({
+        where: { groupId_userId: { groupId, userId: currentUserId } },
+        data: { role: GroupMemberRole.ADMIN },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      }),
+      this.prisma.groupMember.update({
+        where: { groupId_userId: { groupId, userId: targetUserId } },
+        data: { role: GroupMemberRole.OWNER },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      }),
+    ]);
+
+    return [updatedCurrent, updatedTarget];
+  }
 }

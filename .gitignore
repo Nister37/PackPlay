@@ -43,3 +43,7 @@ redis_data/
 
 # Agent bridge
 .agentbridge/
+
+# Local agent instructions
+AGENT.md
+AGENTS.md

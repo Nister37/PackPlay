@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PackingDecisionType, SharedResponsibilityStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
 
 export interface PersonalReadiness {
@@ -28,7 +29,10 @@ export interface GroupReadiness {
 
 @Injectable()
 export class ReadinessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   async getPersonalReadiness(userId: string, sessionId: string): Promise<PersonalReadiness> {
     const session = await this.prisma.packingSession.findUnique({
@@ -77,6 +81,12 @@ export class ReadinessService {
   }
 
   async getGroupReadiness(activityId: string): Promise<GroupReadiness> {
+    const cacheKey = `readiness:activity:${activityId}`;
+    const cached = await this.redis.get<GroupReadiness>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const activity = await this.prisma.groupActivity.findUnique({
       where: { id: activityId },
       include: {
@@ -121,40 +131,44 @@ export class ReadinessService {
         ? 100
         : Math.round((coveredSharedItems / totalSharedItems) * 100);
 
-    // Per-member readiness: based on their packing sessions for this activity
-    const memberReadiness: MemberReadiness[] = [];
+    // Per-member readiness: fetch latest session per member in a SINGLE query
+    const memberUserIds = activity.group.members.map((m) => m.userId);
 
-    for (const member of activity.group.members) {
-      const sessions = await this.prisma.packingSession.findMany({
-        where: {
-          userId: member.userId,
-          groupActivityId: activityId,
-        },
-        include: {
-          checklist: {
-            include: {
-              items: { where: { isMandatory: true }, select: { id: true } },
-            },
-          },
-          decisions: {
-            where: { equipmentItemId: { not: null } },
-            select: { equipmentItemId: true, decision: true },
+    const latestSessions = await this.prisma.packingSession.findMany({
+      where: {
+        groupActivityId: activityId,
+        userId: { in: memberUserIds },
+      },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['userId'],
+      include: {
+        checklist: {
+          include: {
+            items: { where: { isMandatory: true }, select: { id: true } },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      });
+        decisions: {
+          where: { equipmentItemId: { not: null } },
+          select: { equipmentItemId: true, decision: true },
+        },
+      },
+    });
 
-      const latestSession = sessions[0];
+    const sessionsByUser = new Map(
+      latestSessions.map((s) => [s.userId, s]),
+    );
+
+    const memberReadiness: MemberReadiness[] = activity.group.members.map((member) => {
+      const latestSession = sessionsByUser.get(member.userId);
+
       if (!latestSession) {
-        memberReadiness.push({
+        return {
           userId: member.userId,
           userName: member.user.name,
           percentage: 0,
           packedMandatoryItems: 0,
           totalMandatoryItems: 0,
-        });
-        continue;
+        };
       }
 
       const totalMandatory = latestSession.checklist.items.length;
@@ -168,21 +182,25 @@ export class ReadinessService {
 
       const pct = totalMandatory === 0 ? 100 : Math.round((packed / totalMandatory) * 100);
 
-      memberReadiness.push({
+      return {
         userId: member.userId,
         userName: member.user.name,
         percentage: pct,
         packedMandatoryItems: packed,
         totalMandatoryItems: totalMandatory,
-      });
-    }
+      };
+    });
 
-    return {
+    const result: GroupReadiness = {
       activityId,
       totalSharedItems,
       coveredSharedItems,
       groupPercentage,
       memberReadiness,
     };
+
+    await this.redis.set(cacheKey, result, 30);
+
+    return result;
   }
 }

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InvitationsService } from './invitations.service';
 import { PrismaService } from '../common/prisma.service';
 import { hashToken } from '../auth/token.util';
@@ -28,10 +29,18 @@ describe('InvitationsService', () => {
       $transaction: jest.fn(),
     };
 
+    const mockConfigService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'CORS_ORIGIN') return 'http://localhost:4200';
+        return undefined;
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvitationsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 

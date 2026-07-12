@@ -8,9 +8,11 @@ import {
   PackingDecisionReason,
   PackingDecisionType,
   PackingSessionStatus,
+  Prisma,
   SharedResponsibilityStatus,
 } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
 import { RecordDecisionDto, StartPackingSessionDto } from './dto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,6 +22,7 @@ import { PackingGateway } from '../realtime/packing.gateway';
 export class PackingSessionsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
     private readonly packingGateway: PackingGateway,
   ) {}
@@ -65,7 +68,7 @@ export class PackingSessionsService {
   }
 
   async listSessions(userId: string, status?: string) {
-    const where: any = { userId };
+    const where: Prisma.PackingSessionWhereInput = { userId };
     if (status) {
       where.status = status as PackingSessionStatus;
     }
@@ -175,6 +178,8 @@ export class PackingSessionsService {
         userId,
         activityId: session.groupActivityId,
       });
+
+      await this.redis.del(`readiness:activity:${session.groupActivityId}`);
     }
 
     return decision;
@@ -226,6 +231,8 @@ export class PackingSessionsService {
         userId,
         sessionId,
       });
+
+      await this.redis.del(`readiness:activity:${session.groupActivityId}`);
     }
 
     return completed;
@@ -330,10 +337,10 @@ export class PackingSessionsService {
       select: { id: true, name: true },
     });
 
-    // Create notifications for other group members
+    // Create notifications for other group members (batch)
     const otherMembers = activity.group.members.filter((m) => m.userId !== userId);
-    for (const member of otherMembers) {
-      await this.notificationsService.createNotification({
+    await this.notificationsService.createNotificationsBatch(
+      otherMembers.map((member) => ({
         userId: member.userId,
         groupId: activity.groupId,
         type: 'ITEM_MISSING',
@@ -344,8 +351,8 @@ export class PackingSessionsService {
           reportedByUserId: userId,
           reason,
         },
-      });
-    }
+      })),
+    );
 
     // Emit socket event
     this.packingGateway.emitToActivity(groupActivityId, 'shared-item.missing', {

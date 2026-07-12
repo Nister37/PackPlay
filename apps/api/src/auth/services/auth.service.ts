@@ -121,15 +121,8 @@ export class AuthService {
       where: { email: email.toLowerCase() },
     });
 
-    // Silent return to not leak user existence
-    if (!user) return;
-
-    if (user.emailVerified) {
-      throw new BadRequestException({
-        code: AppErrorCode.EMAIL_ALREADY_VERIFIED,
-        message: 'Email is already verified',
-      });
-    }
+    // Silent return to not leak user existence or verification status
+    if (!user || user.emailVerified) return;
 
     await this.createAndSendVerificationToken(user.id, user.email);
   }

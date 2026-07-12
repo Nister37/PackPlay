@@ -7,10 +7,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { Roles } from '../groups/decorators';
@@ -62,6 +65,29 @@ export class InvitationsController {
     @Param('invitationId') invitationId: string,
   ) {
     return this.invitationsService.revokeInvitation(groupId, invitationId);
+  }
+
+  @Get('groups/:groupId/invitations/:invitationId/qr')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, GroupMemberGuard, GroupRoleGuard)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Generate QR code for an invitation (OWNER/ADMIN)' })
+  @ApiProduces('image/png')
+  @ApiQuery({ name: 'token', required: true, description: 'Raw invitation token' })
+  async getInvitationQr(
+    @Param('groupId') groupId: string,
+    @Param('invitationId') invitationId: string,
+    @Query('token') token: string,
+    @Res() res: Response,
+  ) {
+    await this.invitationsService.getInvitationForQr(groupId, invitationId);
+    const buffer = await this.invitationsService.generateQrBuffer(token);
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': buffer.length,
+      'Cache-Control': 'no-store',
+    });
+    res.send(buffer);
   }
 
   @Get('groups/:groupId/invitations')

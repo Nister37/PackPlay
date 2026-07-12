@@ -343,6 +343,8 @@ model PackingDecision {
   sharedItem     SharedItem?    @relation(fields: [sharedItemId], references: [id], onDelete: SetNull)
 
   @@index([packingSessionId])
+  @@index([packingSessionId, equipmentItemId])
+  @@index([packingSessionId, sharedItemId])
   @@map("packing_decisions")
 }
 

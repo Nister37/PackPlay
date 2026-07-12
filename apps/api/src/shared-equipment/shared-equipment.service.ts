@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { SharedResponsibilityStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
 import { CreateGroupActivityDto } from './dto/create-group-activity.dto';
 import { CreateSharedItemDto } from './dto/create-shared-item.dto';
@@ -22,7 +23,10 @@ import { calculateCoverage, CoverageResult } from './coverage.util';
 
 @Injectable()
 export class SharedEquipmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
 
@@ -80,7 +84,7 @@ export class SharedEquipmentService {
   async addSharedItem(activityId: string, userId: string, dto: CreateSharedItemDto) {
     const activity = await this.findActivityOrThrow(activityId);
 
-    return this.prisma.sharedItem.create({
+    const item = await this.prisma.sharedItem.create({
       data: {
         groupActivityId: activity.id,
         name: dto.name,
@@ -91,6 +95,10 @@ export class SharedEquipmentService {
         createdById: userId,
       },
     });
+
+    await this.redis.del(`shared-items:activity:${activityId}`);
+
+    return item;
   }
 
   async updateSharedItem(activityId: string, itemId: string, dto: UpdateSharedItemDto) {
@@ -114,6 +122,12 @@ export class SharedEquipmentService {
   }
 
   async listSharedItems(activityId: string) {
+    const cacheKey = `shared-items:activity:${activityId}`;
+    const cached = await this.redis.get<unknown[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     await this.findActivityOrThrow(activityId);
 
     const items = await this.prisma.sharedItem.findMany({
@@ -128,10 +142,14 @@ export class SharedEquipmentService {
       orderBy: { createdAt: 'asc' },
     });
 
-    return items.map((item) => ({
+    const result = items.map((item) => ({
       ...item,
       coverage: calculateCoverage(item.requiredQuantity, item.responsibilities),
     }));
+
+    await this.redis.set(cacheKey, result, 60);
+
+    return result;
   }
 
   // ─── Responsibilities ─────────────────────────────────────────────────

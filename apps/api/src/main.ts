@@ -1,14 +1,21 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { createOpenApiDocument } from './openapi.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+
+  // Security headers
+  app.use(helmet());
 
   app.enableCors({
     origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:4200'),
@@ -26,19 +33,15 @@ async function bootstrap() {
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('PackPlay API')
-    .setDescription('GearGuardian backend API for group equipment management')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // Only expose Swagger in non-production environments
+  if (nodeEnv !== 'production') {
+    const document = createOpenApiDocument(app);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
+  }
 
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
+  logger.log(`Application is running on port ${port} [${nodeEnv}]`);
 }
 
 bootstrap();

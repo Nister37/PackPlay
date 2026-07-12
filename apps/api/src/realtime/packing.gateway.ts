@@ -14,7 +14,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma.service';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: process.env['CORS_ORIGIN'] || 'http://localhost:4200',
+    credentials: true,
+  },
   namespace: '/packing',
 })
 export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -38,7 +41,7 @@ export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       }
 
       const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('JWT_SECRET', 'change-me-in-production'),
+        secret: this.configService.get<string>('JWT_SECRET'),
       });
 
       client.data.userId = payload.sub;
@@ -61,16 +64,16 @@ export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     const userId = client.data.userId;
     if (!userId) return;
 
-    // Verify group membership through activity
-    const activity = await this.prisma.groupActivity.findUnique({
-      where: { id: data.activityId },
-      include: { group: { include: { members: true } } },
+    // Verify group membership through activity with efficient query
+    const membership = await this.prisma.groupMember.findFirst({
+      where: {
+        userId,
+        group: { activities: { some: { id: data.activityId } } },
+      },
+      select: { id: true },
     });
 
-    if (!activity) return;
-
-    const isMember = activity.group.members.some((m) => m.userId === userId);
-    if (!isMember) return;
+    if (!membership) return;
 
     const room = `activity:${data.activityId}`;
     await client.join(room);

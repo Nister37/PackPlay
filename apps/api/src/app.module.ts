@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { CommonModule } from './common/common.module';
@@ -15,6 +16,7 @@ import { PackingSessionsModule } from './packing-sessions/packing-sessions.modul
 import { ReadinessModule } from './readiness/readiness.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { LoggingInterceptor } from './common/logging.interceptor';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { RealtimeModule } from './realtime/realtime.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    ScheduleModule.forRoot(),
     CommonModule,
     HealthModule,
     AuthModule,
@@ -40,6 +43,10 @@ import { RealtimeModule } from './realtime/realtime.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
     },
   ],
 })

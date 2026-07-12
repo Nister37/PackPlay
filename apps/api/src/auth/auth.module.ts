@@ -15,9 +15,13 @@ import { EMAIL_SERVICE } from './interfaces';
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService): JwtModuleOptions => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
         const expiresIn = configService.get('JWT_ACCESS_EXPIRATION', '15m');
         return {
-          secret: configService.get<string>('JWT_SECRET', 'change-me-in-production'),
+          secret,
           signOptions: {
             expiresIn: expiresIn as `${number}m`,
           },

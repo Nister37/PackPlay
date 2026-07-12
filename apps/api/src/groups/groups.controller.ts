@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../auth/guards';
 import { GroupMemberGuard, GroupRoleGuard } from './guards';
 import { Roles } from './decorators';
 import { GroupsService } from './groups.service';
-import { CreateGroupDto, UpdateGroupDto, UpdateMemberRoleDto } from './dto';
+import { CreateGroupDto, UpdateGroupDto, UpdateMemberRoleDto, TransferOwnershipDto } from './dto';
 
 @ApiTags('Groups')
 @ApiBearerAuth()
@@ -99,5 +99,17 @@ export class GroupsController {
   @ApiOperation({ summary: 'Leave a group' })
   async leaveGroup(@Param('groupId') groupId: string, @Req() req: any) {
     return this.groupsService.leaveGroup(groupId, req.user.id);
+  }
+
+  @Post(':groupId/transfer-ownership')
+  @UseGuards(GroupMemberGuard, GroupRoleGuard)
+  @Roles('OWNER')
+  @ApiOperation({ summary: 'Transfer group ownership to another member' })
+  async transferOwnership(
+    @Param('groupId') groupId: string,
+    @Body() dto: TransferOwnershipDto,
+    @Req() req: any,
+  ) {
+    return this.groupsService.transferOwnership(groupId, req.user.id, dto.targetUserId);
   }
 }

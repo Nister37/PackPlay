@@ -18,7 +18,7 @@ describe('PackingGateway', () => {
 
     prisma = {
       groupActivity: { findUnique: jest.fn() },
-      groupMember: { findUnique: jest.fn() },
+      groupMember: { findUnique: jest.fn(), findFirst: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -96,10 +96,7 @@ describe('PackingGateway', () => {
         join: jest.fn(),
       };
 
-      prisma.groupActivity.findUnique.mockResolvedValue({
-        id: 'activity-1',
-        group: { members: [{ userId: 'user-1' }] },
-      });
+      prisma.groupMember.findFirst.mockResolvedValue({ id: 'membership-1' });
 
       await gateway.handleJoinActivity(mockClient as any, { activityId: 'activity-1' });
       expect(mockClient.join).toHaveBeenCalledWith('activity:activity-1');
@@ -111,10 +108,7 @@ describe('PackingGateway', () => {
         join: jest.fn(),
       };
 
-      prisma.groupActivity.findUnique.mockResolvedValue({
-        id: 'activity-1',
-        group: { members: [{ userId: 'other-user' }] },
-      });
+      prisma.groupMember.findFirst.mockResolvedValue(null);
 
       await gateway.handleJoinActivity(mockClient as any, { activityId: 'activity-1' });
       expect(mockClient.join).not.toHaveBeenCalled();
