@@ -10,6 +10,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { SportProfilesModule } from './sport-profiles/sport-profiles.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { EquipmentItemsModule } from './equipment-items/equipment-items.module';
+import { SharedEquipmentModule } from './shared-equipment/shared-equipment.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { EquipmentItemsModule } from './equipment-items/equipment-items.module';
     SportProfilesModule,
     ChecklistsModule,
     EquipmentItemsModule,
+    SharedEquipmentModule,
   ],
   providers: [
     {
