@@ -28,6 +28,8 @@ model User {
   sharedResponsibilities  SharedResponsibility[]
   packingSessions         PackingSession[]
   notifications           Notification[]
+  outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
+  incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
 
   @@map("users")
 }
@@ -255,9 +257,36 @@ model SharedItem {
   createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
   responsibilities SharedResponsibility[]
   packingDecisions PackingDecision[]
+  responsibilityTransfers ResponsibilityTransfer[]
 
   @@index([groupActivityId])
   @@map("shared_items")
+}
+
+enum ResponsibilityTransferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+model ResponsibilityTransfer {
+  id           String                       @id @default(uuid())
+  sharedItemId String                       @map("shared_item_id")
+  fromUserId   String                       @map("from_user_id")
+  toUserId     String                       @map("to_user_id")
+  quantity     Int
+  status       ResponsibilityTransferStatus @default(PENDING)
+  createdAt    DateTime                     @default(now()) @map("created_at")
+  respondedAt  DateTime?                    @map("responded_at")
+
+  sharedItem SharedItem @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
+  fromUser   User       @relation("transferFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User       @relation("transferTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([toUserId, status])
+  @@index([sharedItemId, status])
+  @@map("responsibility_transfers")
 }
 
 model SharedResponsibility {

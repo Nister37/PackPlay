@@ -92,6 +92,16 @@ export class ResponsibilitiesController {
     return this.sharedEquipmentService.transferResponsibility(itemId, req.user.id, dto);
   }
 
+  @Post('transfers/:transferId/accept')
+  @ApiOperation({ summary: 'Accept a pending responsibility transfer' })
+  async acceptTransfer(
+    @Param('itemId') itemId: string,
+    @Param('transferId') transferId: string,
+    @Req() req: any,
+  ) {
+    return this.sharedEquipmentService.acceptTransfer(itemId, transferId, req.user.id);
+  }
+
   @Get('coverage')
   @ApiOperation({ summary: 'Get coverage status for a shared item' })
   async getCoverage(@Param('itemId') itemId: string) {
