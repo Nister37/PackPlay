@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SharedResponsibilityStatus } from '@prisma/client';
+import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
@@ -19,7 +19,7 @@ import {
   TakeOverDto,
   TransferResponsibilityDto,
 } from './dto/responsibility.dto';
-import { calculateCoverage, CoverageResult } from './coverage.util';
+import { calculateCoverage } from './coverage.util';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -500,6 +500,10 @@ export class SharedEquipmentService {
         });
       }
 
+      if (dto.targetUserId === userId) {
+        throw new BadRequestException('Responsibility must be transferred to another member');
+      }
+
       // Check if target already has an active responsibility
       const targetExisting = await tx.sharedResponsibility.findUnique({
         where: {
@@ -519,45 +523,68 @@ export class SharedEquipmentService {
       }
 
       const transferQuantity = dto.quantity ?? responsibility.committedQuantity;
-
-      // Release the current responsibility
-      await tx.sharedResponsibility.update({
-        where: { id: responsibility.id },
-        data: { status: SharedResponsibilityStatus.RELEASED },
-      });
-
-      // Create or update target's responsibility
-      if (targetExisting) {
-        return tx.sharedResponsibility.update({
-          where: { id: targetExisting.id },
-          data: {
-            committedQuantity: transferQuantity,
-            status: SharedResponsibilityStatus.COMMITTED,
-          },
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-          },
-        });
+      if (transferQuantity > responsibility.committedQuantity) {
+        throw new BadRequestException('Transfer quantity exceeds current responsibility');
       }
 
-      return tx.sharedResponsibility.create({
+      await tx.responsibilityTransfer.updateMany({
+        where: { sharedItemId: itemId, fromUserId: userId, status: ResponsibilityTransferStatus.PENDING },
+        data: { status: ResponsibilityTransferStatus.CANCELLED, respondedAt: new Date() },
+      });
+
+      return tx.responsibilityTransfer.create({
         data: {
           sharedItemId: itemId,
-          userId: dto.targetUserId,
-          committedQuantity: transferQuantity,
-          status: SharedResponsibilityStatus.COMMITTED,
+          fromUserId: userId,
+          toUserId: dto.targetUserId,
+          quantity: transferQuantity,
         },
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-        },
+        include: { fromUser: { select: { id: true, name: true } }, toUser: { select: { id: true, name: true } } },
       });
     });
   }
 
-  async getCoverage(itemId: string): Promise<CoverageResult> {
+  async acceptTransfer(itemId: string, transferId: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const transfer = await tx.responsibilityTransfer.findUnique({ where: { id: transferId } });
+      if (!transfer || transfer.sharedItemId !== itemId || transfer.toUserId !== userId || transfer.status !== ResponsibilityTransferStatus.PENDING) {
+        throw new NotFoundException('Pending transfer not found');
+      }
+      const source = await tx.sharedResponsibility.findUnique({
+        where: { sharedItemId_userId: { sharedItemId: itemId, userId: transfer.fromUserId } },
+      });
+      if (!source || source.status !== SharedResponsibilityStatus.COMMITTED || source.committedQuantity < transfer.quantity) {
+        throw new ConflictException('The original responsibility is no longer available');
+      }
+
+      const remaining = source.committedQuantity - transfer.quantity;
+      await tx.sharedResponsibility.update({
+        where: { id: source.id },
+        data: { committedQuantity: Math.max(remaining, 1), status: remaining === 0 ? SharedResponsibilityStatus.RELEASED : SharedResponsibilityStatus.COMMITTED },
+      });
+      await tx.sharedResponsibility.upsert({
+        where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
+        create: { sharedItemId: itemId, userId, committedQuantity: transfer.quantity, status: SharedResponsibilityStatus.COMMITTED },
+        update: { committedQuantity: transfer.quantity, status: SharedResponsibilityStatus.COMMITTED },
+      });
+      return tx.responsibilityTransfer.update({
+        where: { id: transferId },
+        data: { status: ResponsibilityTransferStatus.ACCEPTED, respondedAt: new Date() },
+      });
+    });
+  }
+
+  async getCoverage(itemId: string) {
     const item = await this.prisma.sharedItem.findUnique({
       where: { id: itemId },
-      include: { responsibilities: true },
+      include: {
+        responsibilities: { include: { user: { select: { id: true, name: true, email: true } } } },
+        groupActivity: { include: { group: { include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } } } } },
+        responsibilityTransfers: {
+          where: { status: ResponsibilityTransferStatus.PENDING },
+          include: { fromUser: { select: { id: true, name: true } }, toUser: { select: { id: true, name: true } } },
+        },
+      },
     });
 
     if (!item) {
@@ -567,7 +594,17 @@ export class SharedEquipmentService {
       });
     }
 
-    return calculateCoverage(item.requiredQuantity, item.responsibilities);
+    const coverage = calculateCoverage(item.requiredQuantity, item.responsibilities);
+    return {
+      item: { id: item.id, name: item.name, description: item.notes, requiredQuantity: item.requiredQuantity, unit: 'unit(s)' },
+      responsibilities: item.responsibilities.map((responsibility) => ({ ...responsibility, quantity: responsibility.committedQuantity })),
+      coveredQuantity: coverage.committedQuantity,
+      missingQuantity: coverage.uncoveredQuantity,
+      isCovered: coverage.uncoveredQuantity === 0,
+      coverage,
+      eligibleMembers: item.groupActivity.group.members.map((member) => member.user),
+      pendingTransfers: item.responsibilityTransfers,
+    };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────

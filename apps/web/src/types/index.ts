@@ -64,6 +64,16 @@ export interface SharedItemCoverage {
   coveredQuantity: number;
   missingQuantity: number;
   isCovered: boolean;
+  eligibleMembers?: Array<Pick<User, 'id' | 'name' | 'email'>>;
+  pendingTransfers?: Array<{
+    id: string;
+    fromUserId: string;
+    toUserId: string;
+    quantity: number;
+    status: 'PENDING';
+    fromUser: Pick<User, 'id' | 'name'>;
+    toUser: Pick<User, 'id' | 'name'>;
+  }>;
 }
 
 export interface ItemResponsibility {

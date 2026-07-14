@@ -39,6 +39,9 @@ export function SharedItemPage() {
   const [extraQty, setExtraQty] = useState('1');
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showExtraForm, setShowExtraForm] = useState(false);
+  const [showTransferForm, setShowTransferForm] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState('');
+  const [showMissingReasons, setShowMissingReasons] = useState(false);
   const [actionError, setActionError] = useState('');
 
   const {
@@ -86,6 +89,46 @@ export function SharedItemPage() {
     onError: () => setActionError('Failed to release. Please try again.'),
   });
 
+  const extraMutation = useMutation({
+    mutationFn: (quantity: number) =>
+      api.post(`/shared-items/${itemId}/extra`, { quantity }).then((r) => r.data),
+    onSuccess: () => {
+      invalidate();
+      setShowExtraForm(false);
+      setActionError('');
+    },
+    onError: () => setActionError('Failed to add extra units. Please try again.'),
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: () =>
+      api.post(`/shared-items/${itemId}/transfer`, {
+        targetUserId: transferTargetId,
+        quantity: userResponsibility?.quantity,
+      }).then((r) => r.data),
+    onSuccess: () => {
+      invalidate();
+      setShowTransferForm(false);
+      setTransferTargetId('');
+      setActionError('');
+    },
+    onError: () => setActionError('Failed to request transfer. Please try again.'),
+  });
+
+  const acceptTransferMutation = useMutation({
+    mutationFn: (transferId: string) =>
+      api.post(`/shared-items/${itemId}/transfers/${transferId}/accept`).then((r) => r.data),
+    onSuccess: invalidate,
+    onError: () => setActionError('Transfer could not be accepted.'),
+  });
+
+  const reportMissingMutation = useMutation({
+    mutationFn: (reason: 'FORGOT' | 'COULD_NOT_BRING' | 'REPLACEMENT_ARRANGED') =>
+      api.post(`/shared-items/${itemId}/report-missing`, { reason }).then((r) => r.data),
+    onSuccess: () => { invalidate(); setShowMissingReasons(false); },
+    onError: () => setActionError('Failed to report the missing item.'),
+  });
+
   const handleClaim = () => {
     const qty = parseInt(claimQty, 10);
     if (isNaN(qty) || qty < 1) {
@@ -101,7 +144,7 @@ export function SharedItemPage() {
       setActionError('Enter a valid quantity.');
       return;
     }
-    claimMutation.mutate(qty);
+    extraMutation.mutate(qty);
   };
 
   const item = coverage?.item;
@@ -254,6 +297,23 @@ export function SharedItemPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3 pb-8">
+            {coverage.pendingTransfers
+              ?.filter((transfer) => transfer.toUserId === user?.id)
+              .map((transfer) => (
+                <Card key={transfer.id} className="border-primary">
+                  <p className="font-body text-sm">
+                    {transfer.fromUser.name ?? 'A member'} wants to transfer {transfer.quantity} unit(s) to you.
+                  </p>
+                  <Button
+                    className="mt-3"
+                    fullWidth
+                    onClick={() => acceptTransferMutation.mutate(transfer.id)}
+                    loading={acceptTransferMutation.isPending}
+                  >
+                    Accept transfer
+                  </Button>
+                </Card>
+              ))}
             {/* No claim yet */}
             {!userResponsibility && (
               <>
@@ -307,15 +367,36 @@ export function SharedItemPage() {
 
             {/* Has claim, not packed */}
             {userResponsibility && userResponsibility.status === 'COMMITTED' && (
-              <Button
-                variant="primary"
-                fullWidth
-                onClick={() => packMutation.mutate(userResponsibility.quantity)}
-                loading={packMutation.isPending}
-                className="bg-secondary border-secondary"
-              >
-                MARK AS PACKED ✓
-              </Button>
+              <>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => packMutation.mutate(userResponsibility.quantity)}
+                  loading={packMutation.isPending}
+                  className="bg-secondary border-secondary"
+                >
+                  MARK AS PACKED ✓
+                </Button>
+                {showTransferForm ? (
+                  <div className="border border-brand-border p-4 bg-white space-y-3">
+                    <label className="block font-headline text-xs uppercase">
+                      Transfer to
+                      <select className="mt-1 w-full border border-brand-border p-2 bg-white" value={transferTargetId} onChange={(e) => setTransferTargetId(e.target.value)}>
+                        <option value="">Choose a member</option>
+                        {coverage.eligibleMembers?.filter((member) => member.id !== user?.id).map((member) => (
+                          <option key={member.id} value={member.id}>{member.name ?? member.email}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="flex gap-2">
+                      <Button onClick={() => transferMutation.mutate()} disabled={!transferTargetId} loading={transferMutation.isPending}>Request transfer</Button>
+                      <Button variant="ghost" onClick={() => setShowTransferForm(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button variant="ghost" fullWidth onClick={() => setShowTransferForm(true)}>Transfer responsibility</Button>
+                )}
+              </>
             )}
 
             {/* Release button (if claimed) */}
@@ -332,6 +413,22 @@ export function SharedItemPage() {
                   RELEASE
                 </Button>
               )}
+
+            {userResponsibility && userResponsibility.status === 'COMMITTED' && (
+              showMissingReasons ? (
+                <div className="border border-primary p-4 bg-white space-y-2">
+                  <p className="font-headline text-xs uppercase">Why can’t you bring this item?</p>
+                  {(['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED'] as const).map((reason) => (
+                    <Button key={reason} variant="ghost" fullWidth onClick={() => reportMissingMutation.mutate(reason)} loading={reportMissingMutation.isPending}>
+                      {reason.replace(/_/g, ' ')}
+                    </Button>
+                  ))}
+                  <Button variant="ghost" fullWidth onClick={() => setShowMissingReasons(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button variant="urgent" fullWidth onClick={() => setShowMissingReasons(true)}>I cannot bring this</Button>
+              )
+            )}
 
             {/* Bring extra */}
             {showExtraForm ? (
@@ -353,7 +450,7 @@ export function SharedItemPage() {
                   <Button
                     variant="ghost"
                     onClick={handleBringExtra}
-                    loading={claimMutation.isPending}
+                    loading={extraMutation.isPending}
                     className="flex-1"
                   >
                     CONFIRM EXTRA
