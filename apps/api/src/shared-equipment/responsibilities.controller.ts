@@ -104,7 +104,7 @@ export class ResponsibilitiesController {
 
   @Get('coverage')
   @ApiOperation({ summary: 'Get coverage status for a shared item' })
-  async getCoverage(@Param('itemId') itemId: string) {
-    return this.sharedEquipmentService.getCoverage(itemId);
+  async getCoverage(@Param('itemId') itemId: string, @Req() req: any) {
+    return this.sharedEquipmentService.getCoverage(itemId, req.user.id);
   }
 }

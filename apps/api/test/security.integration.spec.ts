@@ -199,6 +199,14 @@ describe('Security (integration)', () => {
         .expect(403);
     });
 
+    it('should not allow non-member to regenerate invitations', async () => {
+      await request(app.getHttpServer())
+        .post(`/groups/${groupId}/invitations/regenerate`)
+        .set('Authorization', `Bearer ${stranger.accessToken}`)
+        .send({ expiresInHours: 24 })
+        .expect(403);
+    });
+
     it('should not allow MEMBER role to delete group', async () => {
       // Add stranger as MEMBER via invitation
       const { token } = await createInvitation(app, owner.accessToken, groupId);
