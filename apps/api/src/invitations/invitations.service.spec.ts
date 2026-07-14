@@ -21,6 +21,7 @@ describe('InvitationsService', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       groupMember: {
         findUnique: jest.fn(),
@@ -157,6 +158,30 @@ describe('InvitationsService', () => {
         sportType: 'football',
         memberCount: 7,
       });
+    });
+  });
+
+  describe('regenerateInvitation', () => {
+    it('revokes existing invitations and creates one replacement atomically', async () => {
+      const tx = {
+        groupInvitation: {
+          updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+          create: jest.fn().mockResolvedValue({
+            id: 'inv-new', expiresAt: new Date('2099-01-01'), maxUses: 10,
+          }),
+        },
+      };
+      prisma.$transaction.mockImplementation((callback: (client: typeof tx) => unknown) => callback(tx));
+
+      const result = await service.regenerateInvitation('g1', 'u1', { maxUses: 10 });
+
+      expect(tx.groupInvitation.updateMany).toHaveBeenCalledWith({
+        where: { groupId: 'g1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(tx.groupInvitation.create).toHaveBeenCalled();
+      expect(result.id).toBe('inv-new');
+      expect(result.token).toHaveLength(64);
     });
   });
 

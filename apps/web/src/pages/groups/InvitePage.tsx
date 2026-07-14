@@ -43,6 +43,14 @@ export function InvitePage() {
     },
   });
 
+  const regenerateInvitation = useMutation({
+    mutationFn: () => api.post(`/groups/${groupId}/invitations/regenerate`, {
+      expiresInHours: 168,
+      maxUses: 50,
+    }).then(r => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invitations', groupId] }),
+  });
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink);
@@ -242,16 +250,19 @@ export function InvitePage() {
             <Button
               variant="urgent"
               fullWidth
-              loading={createInvitation.isPending}
-              onClick={() => createInvitation.mutate()}
+              loading={createInvitation.isPending || regenerateInvitation.isPending}
+              onClick={() => activeInvitation ? regenerateInvitation.mutate() : createInvitation.mutate()}
             >
-              CREATE NEW INVITE LINK
+              {activeInvitation ? 'INVALIDATE & REGENERATE' : 'CREATE NEW INVITE LINK'}
             </Button>
 
             {createInvitation.isError && (
               <p className="font-body text-xs text-red-600 mt-3 text-center">
                 Failed to create invitation. Please try again.
               </p>
+            )}
+            {regenerateInvitation.isError && (
+              <p className="font-body text-xs text-red-600 mt-3 text-center">Failed to regenerate invitation.</p>
             )}
           </>
         )}
