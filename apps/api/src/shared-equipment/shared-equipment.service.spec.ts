@@ -4,11 +4,13 @@ import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prism
 import { SharedEquipmentService } from './shared-equipment.service';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SharedEquipmentService', () => {
   let service: SharedEquipmentService;
   let prisma: jest.Mocked<any>;
   let redis: jest.Mocked<any>;
+  let notifications: jest.Mocked<any>;
 
   beforeEach(async () => {
     const mockPrisma = {
@@ -39,17 +41,23 @@ describe('SharedEquipmentService', () => {
       delByPattern: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockNotifications = {
+      createNotificationsBatch: jest.fn().mockResolvedValue({ count: 0 }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SharedEquipmentService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RedisService, useValue: mockRedis },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
     service = module.get<SharedEquipmentService>(SharedEquipmentService);
     prisma = module.get(PrismaService);
     redis = module.get(RedisService);
+    notifications = module.get(NotificationsService);
   });
 
   it('should be defined', () => {
@@ -318,7 +326,7 @@ describe('SharedEquipmentService', () => {
       );
     });
 
-    it('should throw ALREADY_CLAIMED if user already has active responsibility', async () => {
+    it('should add the takeover quantity to an existing active responsibility', async () => {
       const mockItem = {
         id: 'item-1',
         requiredQuantity: 2,
@@ -341,13 +349,26 @@ describe('SharedEquipmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const tx = {
           sharedItem: { findUnique: jest.fn().mockResolvedValue(mockItem) },
+          sharedResponsibility: {
+            update: jest
+              .fn()
+              .mockResolvedValueOnce({
+                ...mockItem.responsibilities[0],
+                status: SharedResponsibilityStatus.REPLACEMENT_ARRANGED,
+              })
+              .mockResolvedValueOnce({
+                ...mockItem.responsibilities[1],
+                committedQuantity: 2,
+                status: SharedResponsibilityStatus.COMMITTED,
+              }),
+          },
         };
         return fn(tx);
       });
 
-      await expect(service.takeOver('item-1', 'user-1', { quantity: 1 })).rejects.toThrow(
-        ConflictException,
-      );
+      const result = await service.takeOver('item-1', 'user-1', { quantity: 1 });
+      expect(result.committedQuantity).toBe(2);
+      expect(result.status).toBe(SharedResponsibilityStatus.COMMITTED);
     });
   });
 
