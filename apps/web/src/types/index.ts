@@ -113,6 +113,35 @@ export interface PackingDecision {
   reason?: string;
 }
 
+export type ActivityType = 'TRAINING' | 'COMPETITION' | 'CASUAL' | 'TRAVEL';
+
+export interface SportProfile {
+  id: string;
+  name: string;
+  activityTypes: ActivityType[];
+}
+
+export interface EquipmentItem {
+  id: string;
+  checklistId: string;
+  name: string;
+  quantity: number;
+  category?: string | null;
+  isMandatory: boolean;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface PersonalChecklist {
+  id: string;
+  name: string;
+  sportProfileId: string;
+  activityType?: ActivityType | null;
+  isTemplate: boolean;
+  items?: EquipmentItem[];
+  _count?: { items: number };
+}
+
 export interface Notification {
   id: string;
   userId: string;
