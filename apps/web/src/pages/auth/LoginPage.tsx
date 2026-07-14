@@ -67,6 +67,14 @@ export function LoginPage() {
           {error && (
             <div className="bg-white border border-[#BA1A1A] px-4 py-3 mb-4">
               <p className="font-body text-sm text-[#BA1A1A]">{error}</p>
+              {error.toLowerCase().includes('verify') && (
+                <Link
+                  to={`/resend-verification?email=${encodeURIComponent(email)}`}
+                  className="mt-2 inline-block font-headline text-xs font-bold uppercase tracking-wider text-brand-text underline"
+                >
+                  Resend verification email
+                </Link>
+              )}
             </div>
           )}
 
