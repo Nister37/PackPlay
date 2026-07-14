@@ -39,8 +39,6 @@ export class InvitationsController {
   }
 
   @Get('invitations/:token/info')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Preview invitation info before joining' })
   async getInvitationInfo(@Param('token') token: string) {
     return this.invitationsService.getInvitationInfo(token);

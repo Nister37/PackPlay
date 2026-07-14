@@ -54,10 +54,10 @@ export function PackingSessionPage() {
           params: { status: 'IN_PROGRESS' },
         });
         const sessions: PackingSession[] = listResp.data;
-        let activeSession = sessions.find((s) => s.activityId === activityId) ?? null;
+        let activeSession = sessions.find((s) => s.groupActivityId === activityId) ?? null;
 
         if (!activeSession) {
-          const createResp = await api.post('/packing-sessions', { activityId });
+          const createResp = await api.post('/packing-sessions', { groupActivityId: activityId });
           activeSession = createResp.data as PackingSession;
         }
 

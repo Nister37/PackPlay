@@ -32,6 +32,7 @@ export class InvitationsService {
     const invitation = await this.prisma.groupInvitation.create({
       data: {
         groupId,
+        token,
         tokenHash,
         expiresAt,
         maxUses: dto.maxUses ?? null,
@@ -154,7 +155,16 @@ export class InvitationsService {
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
-      include: {
+      select: {
+        id: true,
+        token: true,
+        expiresAt: true,
+        maxUses: true,
+        useCount: true,
+        createdAt: true,
+        group: {
+          select: { id: true, name: true, sportType: true },
+        },
         createdBy: { select: { id: true, name: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -41,6 +41,13 @@ export function JoinPage() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Store invite token for auto-join after login
+  useEffect(() => {
+    if (token && !isAuthenticated && !authLoading) {
+      localStorage.setItem('pendingInviteToken', token);
+    }
+  }, [token, isAuthenticated, authLoading]);
 
   const { data: inviteInfo, isLoading: infoLoading, error: infoError } = useQuery<InvitationInfo>({
     queryKey: ['invitation-info', token],

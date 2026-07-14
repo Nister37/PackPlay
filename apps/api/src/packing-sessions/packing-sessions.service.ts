@@ -28,17 +28,14 @@ export class PackingSessionsService {
   ) {}
 
   async startSession(userId: string, dto: StartPackingSessionDto) {
-    // Verify checklist belongs to user
-    const checklist = await this.prisma.checklist.findUnique({
-      where: { id: dto.checklistId },
-    });
-
-    if (!checklist || checklist.userId !== userId) {
-      throw new NotFoundException({
-        code: AppErrorCode.CHECKLIST_NOT_FOUND,
-        message: 'Checklist not found',
+    if (!dto.checklistId && !dto.groupActivityId) {
+      throw new BadRequestException({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Either checklistId or groupActivityId must be provided',
       });
     }
+
+    let checklistId = dto.checklistId;
 
     // Verify activity exists if provided
     if (dto.groupActivityId) {
@@ -51,12 +48,67 @@ export class PackingSessionsService {
           message: 'Activity not found',
         });
       }
+
+      // Auto-resolve checklist from activity's sport profile if not explicitly provided
+      if (!checklistId && activity.sportProfileId) {
+        const checklist = await this.prisma.checklist.findFirst({
+          where: { userId, sportProfileId: activity.sportProfileId },
+          orderBy: { updatedAt: 'desc' },
+        });
+        if (checklist) {
+          checklistId = checklist.id;
+        } else {
+          // Auto-create a checklist for this sport so packing can proceed
+          const sportProfile = await this.prisma.sportProfile.findUnique({
+            where: { id: activity.sportProfileId },
+          });
+          const newChecklist = await this.prisma.checklist.create({
+            data: {
+              userId,
+              sportProfileId: activity.sportProfileId,
+              name: sportProfile ? `${sportProfile.name} Checklist` : 'Packing Checklist',
+            },
+          });
+          checklistId = newChecklist.id;
+        }
+      }
+
+      // If activity has no sport profile, create a generic checklist
+      if (!checklistId && !activity.sportProfileId) {
+        const newChecklist = await this.prisma.checklist.create({
+          data: {
+            userId,
+            sportProfileId: await this.getOrCreateDefaultSportProfile(userId),
+            name: `${activity.name ?? 'Activity'} Checklist`,
+          },
+        });
+        checklistId = newChecklist.id;
+      }
+    }
+
+    if (!checklistId) {
+      throw new BadRequestException({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Could not resolve a checklist for this session. Please provide a checklistId.',
+      });
+    }
+
+    // Verify checklist belongs to user
+    const checklist = await this.prisma.checklist.findUnique({
+      where: { id: checklistId },
+    });
+
+    if (!checklist || checklist.userId !== userId) {
+      throw new NotFoundException({
+        code: AppErrorCode.CHECKLIST_NOT_FOUND,
+        message: 'Checklist not found',
+      });
     }
 
     return this.prisma.packingSession.create({
       data: {
         userId,
-        checklistId: dto.checklistId,
+        checklistId,
         groupActivityId: dto.groupActivityId ?? null,
         status: PackingSessionStatus.IN_PROGRESS,
       },
@@ -362,5 +414,22 @@ export class PackingSessionsService {
       userId,
       reason,
     });
+  }
+
+  private async getOrCreateDefaultSportProfile(userId: string): Promise<string> {
+    const existing = await this.prisma.sportProfile.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (existing) return existing.id;
+
+    const profile = await this.prisma.sportProfile.create({
+      data: {
+        userId,
+        name: 'General',
+        activityTypes: [],
+      },
+    });
+    return profile.id;
   }
 }

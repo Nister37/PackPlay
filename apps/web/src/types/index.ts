@@ -97,7 +97,8 @@ export interface SharedItemWithCoverage {
 export interface PackingSession {
   id: string;
   userId: string;
-  activityId?: string;
+  checklistId: string;
+  groupActivityId?: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   startedAt: string;
   completedAt?: string;

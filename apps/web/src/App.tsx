@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { JoinPage } from '@/pages/auth/JoinPage';
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { GroupsListPage } from '@/pages/groups/GroupsListPage';
 import { CreateGroupPage } from '@/pages/groups/CreateGroupPage';
@@ -41,6 +42,7 @@ export function App() {
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/join/:token" element={<JoinPage />} />
 
       {/* Protected routes */}

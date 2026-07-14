@@ -2,9 +2,10 @@ import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StartPackingSessionDto {
-  @ApiProperty({ description: 'Checklist to pack from' })
+  @ApiPropertyOptional({ description: 'Checklist to pack from (resolved automatically from activity if not provided)' })
+  @IsOptional()
   @IsUUID()
-  checklistId!: string;
+  checklistId?: string;
 
   @ApiPropertyOptional({ description: 'Group activity ID for group packing sessions' })
   @IsOptional()

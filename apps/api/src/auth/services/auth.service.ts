@@ -48,6 +48,11 @@ export class AuthService {
     @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
   ) {}
 
+  private get requireEmailVerification(): boolean {
+    const value = this.configService.get<string>('REQUIRE_EMAIL_VERIFICATION');
+    return value !== 'false';
+  }
+
   async register(
     email: string,
     password: string,
@@ -70,13 +75,16 @@ export class AuthService {
       data: {
         email: email.toLowerCase(),
         name,
+        emailVerified: !this.requireEmailVerification,
         identity: {
           create: { passwordHash },
         },
       },
     });
 
-    await this.createAndSendVerificationToken(user.id, user.email);
+    if (this.requireEmailVerification) {
+      await this.createAndSendVerificationToken(user.id, user.email);
+    }
 
     this.logger.log(`User registered: ${user.id}`);
     return { userId: user.id };
@@ -163,7 +171,7 @@ export class AuthService {
       });
     }
 
-    if (!user.emailVerified) {
+    if (this.requireEmailVerification && !user.emailVerified) {
       throw new UnauthorizedException({
         code: AppErrorCode.EMAIL_NOT_VERIFIED,
         message: 'Please verify your email before logging in',
@@ -264,11 +272,14 @@ export class AuthService {
       },
     });
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
     try {
       await this.emailService.send({
         to: user.email,
         subject: 'PackPlay - Password Reset',
-        body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
+        body: `Click the link below to reset your password:\n\n${resetLink}\n\nOr use this token manually: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
       });
     } catch (error) {
       this.logger.error(
@@ -394,11 +405,14 @@ export class AuthService {
       },
     });
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const verifyLink = `${frontendUrl}/verify-email?token=${rawToken}`;
+
     try {
       await this.emailService.send({
         to: email,
         subject: 'PackPlay - Verify Your Email',
-        body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
+        body: `Click the link below to verify your email:\n\n${verifyLink}\n\nOr use this token manually: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
       });
     } catch (error) {
       this.logger.error(
