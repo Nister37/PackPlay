@@ -20,12 +20,14 @@ import {
   TransferResponsibilityDto,
 } from './dto/responsibility.dto';
 import { calculateCoverage } from './coverage.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SharedEquipmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -340,7 +342,8 @@ export class SharedEquipmentService {
   }
 
   async reportMissing(itemId: string, userId: string, dto: ReportMissingDto) {
-    return this.prisma.$transaction(async (tx) => {
+    await this.assertItemGroupMember(itemId, userId);
+    const result = await this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
       });
@@ -366,6 +369,41 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: itemId },
+      select: {
+        name: true,
+        groupActivityId: true,
+        groupActivity: {
+          select: {
+            groupId: true,
+            group: { select: { members: { select: { userId: true } } } },
+          },
+        },
+      },
+    });
+
+    if (item) {
+      await this.notificationsService.createNotificationsBatch(
+        item.groupActivity.group.members
+          .filter((member) => member.userId !== userId)
+          .map((member) => ({
+            userId: member.userId,
+            groupId: item.groupActivity.groupId,
+            type: 'ITEM_MISSING',
+            payload: {
+              sharedItemId: itemId,
+              sharedItemName: item.name,
+              activityId: item.groupActivityId,
+              reportedByUserId: userId,
+              reason: dto.reason,
+            },
+          })),
+      );
+    }
+
+    return result;
   }
 
   async takeOver(itemId: string, userId: string, dto: TakeOverDto) {
@@ -408,18 +446,24 @@ export class SharedEquipmentService {
             r.status === SharedResponsibilityStatus.PACKED),
       );
 
-      if (existing) {
-        throw new ConflictException({
-          code: AppErrorCode.ALREADY_CLAIMED,
-          message: 'You already have an active responsibility for this item',
-        });
-      }
-
       // Mark the first missing responsibility as REPLACEMENT_ARRANGED
       await tx.sharedResponsibility.update({
         where: { id: missingResponsibilities[0].id },
         data: { status: SharedResponsibilityStatus.REPLACEMENT_ARRANGED },
       });
+
+      if (existing) {
+        return tx.sharedResponsibility.update({
+          where: { id: existing.id },
+          data: {
+            committedQuantity: existing.committedQuantity + quantity,
+            status: SharedResponsibilityStatus.COMMITTED,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        });
+      }
 
       // Create or update responsibility for the taking-over user
       const existingReleasedOrMissing = item.responsibilities.find(
@@ -600,6 +644,7 @@ export class SharedEquipmentService {
 
     const coverage = calculateCoverage(item.requiredQuantity, item.responsibilities);
     return {
+      ...coverage,
       item: { id: item.id, name: item.name, description: item.notes, requiredQuantity: item.requiredQuantity, unit: 'unit(s)' },
       responsibilities: item.responsibilities.map((responsibility) => ({ ...responsibility, quantity: responsibility.committedQuantity })),
       coveredQuantity: coverage.committedQuantity,
