@@ -176,6 +176,7 @@ export class SharedEquipmentService {
   // ─── Responsibilities ─────────────────────────────────────────────────
 
   async claimResponsibility(itemId: string, userId: string, dto: ClaimResponsibilityDto) {
+    await this.assertItemGroupMember(itemId, userId);
     const quantity = dto.quantity ?? 1;
 
     if (quantity < 1) {
@@ -368,6 +369,7 @@ export class SharedEquipmentService {
   }
 
   async takeOver(itemId: string, userId: string, dto: TakeOverDto) {
+    await this.assertItemGroupMember(itemId, userId);
     const quantity = dto.quantity ?? 1;
     const activityId = await this.getActivityIdForItem(itemId);
 
@@ -458,6 +460,7 @@ export class SharedEquipmentService {
   }
 
   async transferResponsibility(itemId: string, userId: string, dto: TransferResponsibilityDto) {
+    await this.assertItemGroupMember(itemId, userId);
     return this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
@@ -574,7 +577,8 @@ export class SharedEquipmentService {
     });
   }
 
-  async getCoverage(itemId: string) {
+  async getCoverage(itemId: string, userId: string) {
+    await this.assertItemGroupMember(itemId, userId);
     const item = await this.prisma.sharedItem.findUnique({
       where: { id: itemId },
       include: {
@@ -622,6 +626,23 @@ export class SharedEquipmentService {
     }
 
     return activity;
+  }
+
+  private async assertItemGroupMember(itemId: string, userId: string): Promise<void> {
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: itemId },
+      select: {
+        groupActivity: {
+          select: { group: { select: { members: { where: { userId }, select: { id: true }, take: 1 } } } },
+        },
+      },
+    });
+    if (!item?.groupActivity?.group?.members?.length) {
+      throw new NotFoundException({
+        code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
+        message: 'Shared item not found',
+      });
+    }
   }
 
   private async findSharedItemOrThrow(activityId: string, itemId: string) {
