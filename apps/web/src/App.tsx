@@ -18,6 +18,8 @@ import { EquipmentManifestPage } from '@/pages/equipment/EquipmentManifestPage';
 import { SharedItemPage } from '@/pages/equipment/SharedItemPage';
 import { PackingSessionPage } from '@/pages/packing/PackingSessionPage';
 import { GeneralPackingPage } from '@/pages/packing/GeneralPackingPage';
+import { ChecklistsPage } from '@/pages/checklists/ChecklistsPage';
+import { ChecklistDetailPage } from '@/pages/checklists/ChecklistDetailPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -115,6 +117,14 @@ export function App() {
             <PackingSessionPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/checklists"
+        element={<ProtectedRoute><ChecklistsPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/checklists/:checklistId"
+        element={<ProtectedRoute><ChecklistDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/packing"
