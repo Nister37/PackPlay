@@ -38,6 +38,19 @@ export class InvitationsController {
     return this.invitationsService.createInvitation(groupId, req.user.id, dto);
   }
 
+  @Post('groups/:groupId/invitations/regenerate')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, GroupMemberGuard, GroupRoleGuard)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Revoke active invitations and create a replacement' })
+  async regenerateInvitation(
+    @Param('groupId') groupId: string,
+    @Req() req: any,
+    @Body() dto: CreateInvitationDto,
+  ) {
+    return this.invitationsService.regenerateInvitation(groupId, req.user.id, dto);
+  }
+
   @Get('invitations/:token/info')
   @ApiOperation({ summary: 'Preview invitation info before joining' })
   async getInvitationInfo(@Param('token') token: string) {

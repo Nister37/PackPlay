@@ -51,6 +51,38 @@ export class InvitationsService {
     };
   }
 
+  async regenerateInvitation(groupId: string, userId: string, dto: CreateInvitationDto) {
+    const expiresInHours = dto.expiresInHours ?? DEFAULT_EXPIRY_HOURS;
+    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+
+    const invitation = await this.prisma.$transaction(async (tx) => {
+      await tx.groupInvitation.updateMany({
+        where: { groupId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return tx.groupInvitation.create({
+        data: {
+          groupId,
+          token,
+          tokenHash,
+          expiresAt,
+          maxUses: dto.maxUses ?? null,
+          createdById: userId,
+        },
+      });
+    });
+
+    return {
+      id: invitation.id,
+      token,
+      expiresAt: invitation.expiresAt,
+      maxUses: invitation.maxUses,
+      qrDataUrl: await this.generateQrDataUrl(token),
+    };
+  }
+
   async getInvitationInfo(token: string) {
     const tokenHash = hashToken(token);
 

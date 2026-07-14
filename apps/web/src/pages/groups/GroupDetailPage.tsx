@@ -203,6 +203,16 @@ export function GroupDetailPage() {
     },
   });
 
+  const removeMemberMutation = useMutation({
+    mutationFn: (memberId: string) => api.delete(`/groups/${groupId}/members/${memberId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', groupId] }),
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: () => api.post(`/groups/${groupId}/leave`),
+    onSuccess: () => navigate('/groups'),
+  });
+
   const isPageLoading = groupLoading || membersLoading || activitiesLoading;
 
   if (isPageLoading) {
@@ -378,6 +388,19 @@ export function GroupDetailPage() {
                         <p className="font-body text-xs text-brand-muted">Nothing committed yet</p>
                       ) : null}
                     </div>
+                    {(myRole === 'OWNER' || myRole === 'ADMIN') &&
+                      member.userId !== user?.id && member.role !== 'OWNER' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Remove ${member.user?.name ?? 'this member'} from the group?`)) {
+                              removeMemberMutation.mutate(member.id);
+                            }
+                          }}
+                          className="min-h-[44px] px-2 font-headline text-[10px] uppercase text-error underline"
+                        >
+                          Remove
+                        </button>
+                      )}
                   </div>
                 );
               })}
@@ -445,6 +468,17 @@ export function GroupDetailPage() {
               className="w-full mt-3 min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors"
             >
               DELETE GROUP
+            </button>
+          )}
+          {myRole !== 'OWNER' && (
+            <button
+              onClick={() => {
+                if (window.confirm('Leave this group?')) leaveGroupMutation.mutate();
+              }}
+              disabled={leaveGroupMutation.isPending}
+              className="w-full mt-3 min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 disabled:opacity-50"
+            >
+              Leave group
             </button>
           )}
         </div>
