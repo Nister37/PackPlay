@@ -19,6 +19,7 @@ describe('PackingGateway', () => {
     prisma = {
       groupActivity: { findUnique: jest.fn() },
       groupMember: { findUnique: jest.fn(), findFirst: jest.fn() },
+      session: { findFirst: jest.fn().mockResolvedValue({ id: 'session-1' }) },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -52,7 +53,11 @@ describe('PackingGateway', () => {
         disconnect: jest.fn(),
       };
 
-      jwtService.verify.mockReturnValue({ sub: 'user-1', email: 'test@test.com' });
+      jwtService.verify.mockReturnValue({
+        sub: 'user-1',
+        email: 'test@test.com',
+        sid: 'session-1',
+      });
 
       await gateway.handleConnection(mockClient as any);
       expect(mockClient.data.userId).toBe('user-1');

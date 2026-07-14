@@ -1,15 +1,8 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { NotificationsService } from './notifications.service';
+import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -22,16 +15,8 @@ export class NotificationsController {
   @ApiOperation({ summary: 'List user notifications (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async listNotifications(
-    @Req() req: any,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.notificationsService.listNotifications(
-      req.user.id,
-      page || 1,
-      limit || 20,
-    );
+  async listNotifications(@Req() req: any, @Query() query: ListNotificationsQueryDto) {
+    return this.notificationsService.listNotifications(req.user.id, query.page, query.limit);
   }
 
   @Patch(':id/read')

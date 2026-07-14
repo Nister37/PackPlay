@@ -38,9 +38,10 @@ export class SharedItemsController {
   async updateSharedItem(
     @Param('activityId') activityId: string,
     @Param('itemId') itemId: string,
+    @Req() req: any,
     @Body() dto: UpdateSharedItemDto,
   ) {
-    return this.sharedEquipmentService.updateSharedItem(activityId, itemId, dto);
+    return this.sharedEquipmentService.updateSharedItem(activityId, itemId, req.user.id, dto);
   }
 
   @Delete(':itemId')
@@ -49,13 +50,14 @@ export class SharedItemsController {
   async deleteSharedItem(
     @Param('activityId') activityId: string,
     @Param('itemId') itemId: string,
+    @Req() req: any,
   ) {
-    return this.sharedEquipmentService.deleteSharedItem(activityId, itemId);
+    return this.sharedEquipmentService.deleteSharedItem(activityId, itemId, req.user.id);
   }
 
   @Get()
   @ApiOperation({ summary: 'List shared items with coverage status' })
-  async listSharedItems(@Param('activityId') activityId: string) {
-    return this.sharedEquipmentService.listSharedItems(activityId);
+  async listSharedItems(@Param('activityId') activityId: string, @Req() req: any) {
+    return this.sharedEquipmentService.listSharedItems(activityId, req.user.id);
   }
 }

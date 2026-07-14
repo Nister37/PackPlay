@@ -49,6 +49,17 @@ export class PackingSessionsService {
         });
       }
 
+      const membership = await this.prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId: activity.groupId, userId } },
+        select: { id: true },
+      });
+      if (!membership) {
+        throw new NotFoundException({
+          code: AppErrorCode.ACTIVITY_NOT_FOUND,
+          message: 'Activity not found',
+        });
+      }
+
       // Auto-resolve checklist from activity's sport profile if not explicitly provided
       if (!checklistId && activity.sportProfileId) {
         const checklist = await this.prisma.checklist.findFirst({
@@ -167,11 +178,11 @@ export class PackingSessionsService {
   async recordDecision(userId: string, sessionId: string, dto: RecordDecisionDto) {
     const session = await this.findActiveSession(userId, sessionId);
 
-    // Validate at least one item reference
-    if (!dto.equipmentItemId && !dto.sharedItemId) {
+    // A decision must refer to exactly one item in this session's scope.
+    if ((!dto.equipmentItemId && !dto.sharedItemId) || (dto.equipmentItemId && dto.sharedItemId)) {
       throw new BadRequestException({
         code: AppErrorCode.VALIDATION_ERROR,
-        message: 'Either equipmentItemId or sharedItemId must be provided',
+        message: 'Exactly one of equipmentItemId or sharedItemId must be provided',
       });
     }
 
@@ -181,6 +192,50 @@ export class PackingSessionsService {
         code: AppErrorCode.INVALID_DECISION_REASON,
         message: 'Reason is required when decision is NOT_PACKED',
       });
+    }
+
+    if (dto.decision !== 'NOT_PACKED' && dto.reason) {
+      throw new BadRequestException({
+        code: AppErrorCode.INVALID_DECISION_REASON,
+        message: 'A reason is only valid when decision is NOT_PACKED',
+      });
+    }
+
+    if (dto.equipmentItemId) {
+      const equipmentItem = await this.prisma.equipmentItem.findFirst({
+        where: { id: dto.equipmentItemId, checklistId: session.checklistId },
+        select: { id: true },
+      });
+      if (!equipmentItem) {
+        throw new NotFoundException({
+          code: AppErrorCode.EQUIPMENT_ITEM_NOT_FOUND,
+          message: 'Equipment item not found in this session',
+        });
+      }
+    }
+
+    if (dto.sharedItemId) {
+      const sharedItem = session.groupActivityId
+        ? await this.prisma.sharedItem.findFirst({
+            where: {
+              id: dto.sharedItemId,
+              groupActivityId: session.groupActivityId,
+              responsibilities: {
+                some: {
+                  userId,
+                  status: { not: SharedResponsibilityStatus.RELEASED },
+                },
+              },
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!sharedItem) {
+        throw new NotFoundException({
+          code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
+          message: 'Assigned shared item not found in this session',
+        });
+      }
     }
 
     // Check for duplicate decision
@@ -220,7 +275,12 @@ export class PackingSessionsService {
       dto.decision === 'NOT_PACKED' &&
       (dto.reason === 'FORGOT' || dto.reason === 'COULD_NOT_BRING')
     ) {
-      await this.handleSharedItemMissing(userId, dto.sharedItemId, dto.reason, session.groupActivityId);
+      await this.handleSharedItemMissing(
+        userId,
+        dto.sharedItemId,
+        dto.reason,
+        session.groupActivityId,
+      );
     }
 
     // Emit progress update
@@ -253,14 +313,10 @@ export class PackingSessionsService {
     });
 
     const decidedItemIds = new Set(
-      decisions
-        .filter((d) => d.equipmentItemId)
-        .map((d) => d.equipmentItemId),
+      decisions.filter((d) => d.equipmentItemId).map((d) => d.equipmentItemId),
     );
 
-    const unresolvedMandatory = mandatoryItems.filter(
-      (item) => !decidedItemIds.has(item.id),
-    );
+    const unresolvedMandatory = mandatoryItems.filter((item) => !decidedItemIds.has(item.id));
 
     if (unresolvedMandatory.length > 0) {
       throw new BadRequestException({

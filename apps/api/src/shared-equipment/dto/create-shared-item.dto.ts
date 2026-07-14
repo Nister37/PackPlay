@@ -5,11 +5,13 @@ import {
   IsOptional,
   IsString,
   Min,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateSharedItemDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   name!: string;
 
   @IsOptional()
@@ -19,6 +21,7 @@ export class CreateSharedItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   category?: string;
 
   @IsOptional()
@@ -27,5 +30,6 @@ export class CreateSharedItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   notes?: string;
 }

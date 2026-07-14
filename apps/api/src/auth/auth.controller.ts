@@ -6,6 +6,7 @@ import {
   HttpStatus,
   UseGuards,
   Headers,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -34,11 +35,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Account created' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(@Body() dto: RegisterDto) {
-    const result = await this.authService.register(
-      dto.email,
-      dto.password,
-      dto.name,
-    );
+    const result = await this.authService.register(dto.email, dto.password, dto.name);
     return { message: 'Registration successful. Please verify your email.', ...result };
   }
 
@@ -68,15 +65,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(
-    @Body() dto: LoginDto,
-    @Headers('user-agent') userAgent?: string,
-  ) {
-    const tokens = await this.authService.login(
-      dto.email,
-      dto.password,
-      userAgent,
-    );
+  async login(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
+    const tokens = await this.authService.login(dto.email, dto.password, userAgent);
     return tokens;
   }
 
@@ -86,8 +76,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and revoke session' })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  async logout(@Body() dto: RefreshTokenDto) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(@Req() req: any, @Body() dto: RefreshTokenDto) {
+    await this.authService.logout(req.user.id, dto.refreshToken);
     return { message: 'Logged out successfully' };
   }
 
@@ -96,10 +86,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'New token pair' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
-  async refresh(
-    @Body() dto: RefreshTokenDto,
-    @Headers('user-agent') userAgent?: string,
-  ) {
+  async refresh(@Body() dto: RefreshTokenDto, @Headers('user-agent') userAgent?: string) {
     const tokens = await this.authService.refresh(dto.refreshToken, userAgent);
     return tokens;
   }

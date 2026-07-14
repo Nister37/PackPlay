@@ -132,6 +132,7 @@ model Checklist {
 
   @@index([sportProfileId])
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("checklists")
 }
 
@@ -151,6 +152,7 @@ model EquipmentItem {
   packingDecisions PackingDecision[]
 
   @@index([checklistId])
+  @@index([checklistId, sortOrder])
   @@map("equipment_items")
 }
 
@@ -216,6 +218,7 @@ model GroupInvitation {
   createdBy User  @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([groupId])
+  @@index([groupId, createdAt])
   @@index([expiresAt])
   @@map("group_invitations")
 }
@@ -238,6 +241,7 @@ model GroupActivity {
   packingSessions PackingSession[]
 
   @@index([groupId])
+  @@index([groupId, createdAt])
   @@map("group_activities")
 }
 
@@ -304,6 +308,7 @@ model SharedResponsibility {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([sharedItemId, userId])
+  @@index([userId, status])
   @@map("shared_responsibilities")
 }
 
@@ -355,6 +360,7 @@ model PackingSession {
   decisions     PackingDecision[]
 
   @@index([userId, status])
+  @@index([groupActivityId, userId, createdAt])
   @@map("packing_sessions")
 }
 
@@ -391,5 +397,6 @@ model Notification {
   group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([userId, isRead])
+  @@index([userId, createdAt])
   @@map("notifications")
 }

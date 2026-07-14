@@ -44,6 +44,24 @@ export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect 
         secret: this.configService.get<string>('JWT_SECRET'),
       });
 
+      if (!payload.sid) {
+        client.disconnect();
+        return;
+      }
+      const session = await this.prisma.session.findFirst({
+        where: {
+          id: payload.sid,
+          userId: payload.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+      if (!session) {
+        client.disconnect();
+        return;
+      }
+
       client.data.userId = payload.sub;
       this.logger.log(`Client connected: ${client.id} (user: ${payload.sub})`);
     } catch {

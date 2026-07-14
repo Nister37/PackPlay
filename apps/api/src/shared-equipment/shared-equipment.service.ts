@@ -84,7 +84,7 @@ export class SharedEquipmentService {
   // ─── Shared Items ─────────────────────────────────────────────────────
 
   async addSharedItem(activityId: string, userId: string, dto: CreateSharedItemDto) {
-    const activity = await this.findActivityOrThrow(activityId);
+    const activity = await this.assertActivityGroupMember(activityId, userId);
 
     const item = await this.prisma.sharedItem.create({
       data: {
@@ -103,7 +103,13 @@ export class SharedEquipmentService {
     return item;
   }
 
-  async updateSharedItem(activityId: string, itemId: string, dto: UpdateSharedItemDto) {
+  async updateSharedItem(
+    activityId: string,
+    itemId: string,
+    userId: string,
+    dto: UpdateSharedItemDto,
+  ) {
+    await this.assertActivityGroupMember(activityId, userId);
     const item = await this.findSharedItemOrThrow(activityId, itemId);
 
     const updated = await this.prisma.sharedItem.update({
@@ -121,13 +127,15 @@ export class SharedEquipmentService {
     return updated;
   }
 
-  async deleteSharedItem(activityId: string, itemId: string) {
+  async deleteSharedItem(activityId: string, itemId: string, userId: string) {
+    await this.assertActivityGroupMember(activityId, userId);
     await this.findSharedItemOrThrow(activityId, itemId);
     await this.prisma.sharedItem.delete({ where: { id: itemId } });
     await this.invalidateActivityCache(activityId);
   }
 
-  async listSharedItems(activityId: string) {
+  async listSharedItems(activityId: string, userId: string) {
+    await this.assertActivityGroupMember(activityId, userId);
     const cacheKey = `shared-items:activity:${activityId}`;
     const cached = await this.redis.get<unknown[]>(cacheKey);
     if (cached) {
@@ -575,7 +583,11 @@ export class SharedEquipmentService {
       }
 
       await tx.responsibilityTransfer.updateMany({
-        where: { sharedItemId: itemId, fromUserId: userId, status: ResponsibilityTransferStatus.PENDING },
+        where: {
+          sharedItemId: itemId,
+          fromUserId: userId,
+          status: ResponsibilityTransferStatus.PENDING,
+        },
         data: { status: ResponsibilityTransferStatus.CANCELLED, respondedAt: new Date() },
       });
 
@@ -586,33 +598,60 @@ export class SharedEquipmentService {
           toUserId: dto.targetUserId,
           quantity: transferQuantity,
         },
-        include: { fromUser: { select: { id: true, name: true } }, toUser: { select: { id: true, name: true } } },
+        include: {
+          fromUser: { select: { id: true, name: true } },
+          toUser: { select: { id: true, name: true } },
+        },
       });
     });
   }
 
   async acceptTransfer(itemId: string, transferId: string, userId: string) {
+    await this.assertItemGroupMember(itemId, userId);
     return this.prisma.$transaction(async (tx) => {
       const transfer = await tx.responsibilityTransfer.findUnique({ where: { id: transferId } });
-      if (!transfer || transfer.sharedItemId !== itemId || transfer.toUserId !== userId || transfer.status !== ResponsibilityTransferStatus.PENDING) {
+      if (
+        !transfer ||
+        transfer.sharedItemId !== itemId ||
+        transfer.toUserId !== userId ||
+        transfer.status !== ResponsibilityTransferStatus.PENDING
+      ) {
         throw new NotFoundException('Pending transfer not found');
       }
       const source = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId: transfer.fromUserId } },
       });
-      if (!source || source.status !== SharedResponsibilityStatus.COMMITTED || source.committedQuantity < transfer.quantity) {
+      if (
+        !source ||
+        source.status !== SharedResponsibilityStatus.COMMITTED ||
+        source.committedQuantity < transfer.quantity
+      ) {
         throw new ConflictException('The original responsibility is no longer available');
       }
 
       const remaining = source.committedQuantity - transfer.quantity;
       await tx.sharedResponsibility.update({
         where: { id: source.id },
-        data: { committedQuantity: Math.max(remaining, 1), status: remaining === 0 ? SharedResponsibilityStatus.RELEASED : SharedResponsibilityStatus.COMMITTED },
+        data: {
+          committedQuantity: Math.max(remaining, 1),
+          status:
+            remaining === 0
+              ? SharedResponsibilityStatus.RELEASED
+              : SharedResponsibilityStatus.COMMITTED,
+        },
       });
       await tx.sharedResponsibility.upsert({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
-        create: { sharedItemId: itemId, userId, committedQuantity: transfer.quantity, status: SharedResponsibilityStatus.COMMITTED },
-        update: { committedQuantity: transfer.quantity, status: SharedResponsibilityStatus.COMMITTED },
+        create: {
+          sharedItemId: itemId,
+          userId,
+          committedQuantity: transfer.quantity,
+          status: SharedResponsibilityStatus.COMMITTED,
+        },
+        update: {
+          committedQuantity: transfer.quantity,
+          status: SharedResponsibilityStatus.COMMITTED,
+        },
       });
       return tx.responsibilityTransfer.update({
         where: { id: transferId },
@@ -627,10 +666,21 @@ export class SharedEquipmentService {
       where: { id: itemId },
       include: {
         responsibilities: { include: { user: { select: { id: true, name: true, email: true } } } },
-        groupActivity: { include: { group: { include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } } } } },
+        groupActivity: {
+          include: {
+            group: {
+              include: {
+                members: { include: { user: { select: { id: true, name: true, email: true } } } },
+              },
+            },
+          },
+        },
         responsibilityTransfers: {
           where: { status: ResponsibilityTransferStatus.PENDING },
-          include: { fromUser: { select: { id: true, name: true } }, toUser: { select: { id: true, name: true } } },
+          include: {
+            fromUser: { select: { id: true, name: true } },
+            toUser: { select: { id: true, name: true } },
+          },
         },
       },
     });
@@ -645,8 +695,17 @@ export class SharedEquipmentService {
     const coverage = calculateCoverage(item.requiredQuantity, item.responsibilities);
     return {
       ...coverage,
-      item: { id: item.id, name: item.name, description: item.notes, requiredQuantity: item.requiredQuantity, unit: 'unit(s)' },
-      responsibilities: item.responsibilities.map((responsibility) => ({ ...responsibility, quantity: responsibility.committedQuantity })),
+      item: {
+        id: item.id,
+        name: item.name,
+        description: item.notes,
+        requiredQuantity: item.requiredQuantity,
+        unit: 'unit(s)',
+      },
+      responsibilities: item.responsibilities.map((responsibility) => ({
+        ...responsibility,
+        quantity: responsibility.committedQuantity,
+      })),
       coveredQuantity: coverage.committedQuantity,
       missingQuantity: coverage.uncoveredQuantity,
       isCovered: coverage.uncoveredQuantity === 0,
@@ -673,12 +732,32 @@ export class SharedEquipmentService {
     return activity;
   }
 
+  private async assertActivityGroupMember(activityId: string, userId: string) {
+    const activity = await this.prisma.groupActivity.findFirst({
+      where: {
+        id: activityId,
+        group: { members: { some: { userId } } },
+      },
+    });
+
+    if (!activity) {
+      throw new NotFoundException({
+        code: AppErrorCode.ACTIVITY_NOT_FOUND,
+        message: 'Activity not found',
+      });
+    }
+
+    return activity;
+  }
+
   private async assertItemGroupMember(itemId: string, userId: string): Promise<void> {
     const item = await this.prisma.sharedItem.findUnique({
       where: { id: itemId },
       select: {
         groupActivity: {
-          select: { group: { select: { members: { where: { userId }, select: { id: true }, take: 1 } } } },
+          select: {
+            group: { select: { members: { where: { userId }, select: { id: true }, take: 1 } } },
+          },
         },
       },
     });

@@ -140,9 +140,25 @@ export class InvitationsService {
       });
     }
 
-    // Join and increment use count in a transaction
-    const [member] = await this.prisma.$transaction([
-      this.prisma.groupMember.create({
+    // Consume capacity and join atomically so concurrent requests cannot exceed maxUses.
+    return this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.groupInvitation.updateMany({
+        where: {
+          id: invitation.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+          ...(invitation.maxUses !== null && { useCount: { lt: invitation.maxUses } }),
+        },
+        data: { useCount: { increment: 1 } },
+      });
+      if (consumed.count !== 1) {
+        throw new ForbiddenException({
+          code: AppErrorCode.INVITATION_MAX_USES_REACHED,
+          message: 'This invitation is no longer available',
+        });
+      }
+
+      return tx.groupMember.create({
         data: {
           groupId: invitation.groupId,
           userId,
@@ -152,14 +168,8 @@ export class InvitationsService {
           group: { select: { id: true, name: true, sportType: true } },
           user: { select: { id: true, name: true, email: true } },
         },
-      }),
-      this.prisma.groupInvitation.update({
-        where: { id: invitation.id },
-        data: { useCount: { increment: 1 } },
-      }),
-    ]);
-
-    return member;
+      });
+    });
   }
 
   async revokeInvitation(groupId: string, invitationId: string) {
@@ -203,7 +213,7 @@ export class InvitationsService {
     });
   }
 
-  async getInvitationForQr(groupId: string, invitationId: string): Promise<void> {
+  async getInvitationForQr(groupId: string, invitationId: string): Promise<string> {
     const invitation = await this.prisma.groupInvitation.findUnique({
       where: { id: invitationId },
     });
@@ -216,6 +226,7 @@ export class InvitationsService {
     }
 
     this.validateInvitation(invitation);
+    return invitation.token;
   }
 
   async generateQrBuffer(token: string): Promise<Buffer> {

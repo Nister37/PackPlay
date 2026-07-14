@@ -95,9 +95,7 @@ describe('InvitationsService', () => {
     it('should throw NotFoundException for invalid token', async () => {
       prisma.groupInvitation.findUnique.mockResolvedValue(null);
 
-      await expect(service.getInvitationInfo('invalid-token')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getInvitationInfo('invalid-token')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException for revoked invitation', async () => {
@@ -109,9 +107,7 @@ describe('InvitationsService', () => {
         group: { name: 'Test', sportType: 'football', _count: { members: 3 } },
       });
 
-      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException for expired invitation', async () => {
@@ -123,9 +119,7 @@ describe('InvitationsService', () => {
         group: { name: 'Test', sportType: 'football', _count: { members: 3 } },
       });
 
-      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when max uses reached', async () => {
@@ -137,9 +131,7 @@ describe('InvitationsService', () => {
         group: { name: 'Test', sportType: 'football', _count: { members: 3 } },
       });
 
-      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.getInvitationInfo('some-token')).rejects.toThrow(BadRequestException);
     });
 
     it('should return group info for valid invitation', async () => {
@@ -167,11 +159,15 @@ describe('InvitationsService', () => {
         groupInvitation: {
           updateMany: jest.fn().mockResolvedValue({ count: 2 }),
           create: jest.fn().mockResolvedValue({
-            id: 'inv-new', expiresAt: new Date('2099-01-01'), maxUses: 10,
+            id: 'inv-new',
+            expiresAt: new Date('2099-01-01'),
+            maxUses: 10,
           }),
         },
       };
-      prisma.$transaction.mockImplementation((callback: (client: typeof tx) => unknown) => callback(tx));
+      prisma.$transaction.mockImplementation((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      );
 
       const result = await service.regenerateInvitation('g1', 'u1', { maxUses: 10 });
 
@@ -198,9 +194,7 @@ describe('InvitationsService', () => {
       });
       prisma.groupMember.findUnique.mockResolvedValue({ id: 'existing' });
 
-      await expect(service.joinGroup('token', 'user-1')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.joinGroup('token', 'user-1')).rejects.toThrow(ConflictException);
     });
 
     it('should create membership and increment use count', async () => {
@@ -216,7 +210,12 @@ describe('InvitationsService', () => {
       prisma.groupMember.findUnique.mockResolvedValue(null);
 
       const newMember = { id: 'member-1', groupId: 'g1', userId: 'user-1', role: 'MEMBER' };
-      prisma.$transaction.mockResolvedValue([newMember, {}]);
+      prisma.$transaction.mockImplementation((callback: (tx: any) => unknown) =>
+        callback({
+          groupInvitation: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          groupMember: { create: jest.fn().mockResolvedValue(newMember) },
+        }),
+      );
 
       const result = await service.joinGroup('token', 'user-1');
 
@@ -229,9 +228,7 @@ describe('InvitationsService', () => {
     it('should throw NotFoundException if invitation not found', async () => {
       prisma.groupInvitation.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.revokeInvitation('g1', 'inv-1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.revokeInvitation('g1', 'inv-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should set revokedAt timestamp', async () => {

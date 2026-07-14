@@ -1,14 +1,9 @@
-import {
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 
 export class UpdateSharedItemDto {
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   name?: string;
 
   @IsOptional()
@@ -18,6 +13,7 @@ export class UpdateSharedItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   category?: string;
 
   @IsOptional()
@@ -26,5 +22,6 @@ export class UpdateSharedItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   notes?: string;
 }

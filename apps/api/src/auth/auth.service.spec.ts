@@ -26,6 +26,7 @@ describe('AuthService', () => {
     session: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
@@ -111,9 +112,9 @@ describe('AuthService', () => {
     it('should throw ConflictException if email already exists', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing' });
 
-      await expect(
-        service.register('test@example.com', 'password123'),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.register('test@example.com', 'password123')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should hash passwords with bcrypt', async () => {
@@ -153,7 +154,7 @@ describe('AuthService', () => {
 
     it('should return token pair on valid credentials', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
-      mockPrisma.session.create.mockResolvedValue({});
+      mockPrisma.session.create.mockResolvedValue({ id: 'session-1' });
 
       const result = await service.login('test@example.com', 'password123', 'Mozilla/5.0');
 
@@ -173,26 +174,26 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException on wrong password', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
 
-      await expect(
-        service.login('test@example.com', 'wrong-password'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('test@example.com', 'wrong-password')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.login('nonexistent@example.com', 'password123'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('nonexistent@example.com', 'password123')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw UnauthorizedException if email not verified', async () => {
       const unverifiedUser = { ...mockUser, emailVerified: false };
       mockPrisma.user.findUnique.mockResolvedValue(unverifiedUser);
 
-      await expect(
-        service.login('test@example.com', 'password123'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('test@example.com', 'password123')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -221,9 +222,7 @@ describe('AuthService', () => {
     it('should throw BadRequestException for invalid token', async () => {
       mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(null);
 
-      await expect(service.verifyEmail('invalid-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.verifyEmail('invalid-token')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for expired token', async () => {
@@ -235,9 +234,7 @@ describe('AuthService', () => {
         usedAt: null,
       });
 
-      await expect(service.verifyEmail('some-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.verifyEmail('some-token')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for already used token', async () => {
@@ -249,9 +246,7 @@ describe('AuthService', () => {
         usedAt: new Date(), // already used
       });
 
-      await expect(service.verifyEmail('some-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.verifyEmail('some-token')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -269,7 +264,7 @@ describe('AuthService', () => {
         user: { id: 'user-1', email: 'test@example.com' },
       });
       mockPrisma.session.update.mockResolvedValue({});
-      mockPrisma.session.create.mockResolvedValue({});
+      mockPrisma.session.create.mockResolvedValue({ id: 'session-2' });
 
       const result = await service.refresh(rawToken);
 
@@ -290,9 +285,7 @@ describe('AuthService', () => {
         expiresAt: new Date(Date.now() + 86400000),
       });
 
-      await expect(service.refresh('some-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('some-token')).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for expired session', async () => {
@@ -303,9 +296,7 @@ describe('AuthService', () => {
         expiresAt: new Date(Date.now() - 3600000), // expired
       });
 
-      await expect(service.refresh('some-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('some-token')).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -368,9 +359,9 @@ describe('AuthService', () => {
     it('should throw BadRequestException for invalid reset token', async () => {
       mockPrisma.passwordResetToken.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.confirmPasswordReset('invalid-token', 'newPassword123'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.confirmPasswordReset('invalid-token', 'newPassword123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -381,11 +372,12 @@ describe('AuthService', () => {
 
       mockPrisma.session.findUnique.mockResolvedValue({
         id: 'session-1',
+        userId: 'user-1',
         tokenHash,
       });
       mockPrisma.session.update.mockResolvedValue({});
 
-      await service.logout(rawToken);
+      await service.logout('user-1', rawToken);
 
       expect(mockPrisma.session.update).toHaveBeenCalledWith({
         where: { id: 'session-1' },
@@ -396,7 +388,7 @@ describe('AuthService', () => {
     it('should silently succeed if session not found', async () => {
       mockPrisma.session.findUnique.mockResolvedValue(null);
 
-      await expect(service.logout('unknown-token')).resolves.toBeUndefined();
+      await expect(service.logout('user-1', 'unknown-token')).resolves.toBeUndefined();
     });
   });
 });
