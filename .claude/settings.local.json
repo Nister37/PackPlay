@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__stitch__list_projects",
+      "mcp__stitch__get_screen",
+      "WebFetch(domain:contribution.usercontent.google.com)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\lib\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\types\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\contexts\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\hooks\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\components\\\\ui\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\components\\\\layout\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\pages\\\\auth\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\pages\\\\dashboard\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\pages\\\\groups\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\pages\\\\equipment\")",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Better\\\\Desktop\\\\coding\\\\PackPlay\\\\apps\\\\web\\\\src\\\\pages\\\\packing\")",
+      "Bash(Write-Output \"Directories created\")"
+    ]
+  }
+}

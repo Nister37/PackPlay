@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { JoinPage } from '@/pages/auth/JoinPage';
+import { WelcomePage } from '@/pages/auth/WelcomePage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { GroupsListPage } from '@/pages/groups/GroupsListPage';
 import { CreateGroupPage } from '@/pages/groups/CreateGroupPage';
@@ -117,9 +118,9 @@ export function App() {
         }
       />
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Default: welcome for guests, dashboard for authenticated */}
+      <Route path="/" element={<WelcomePage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
