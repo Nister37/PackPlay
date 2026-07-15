@@ -80,9 +80,7 @@ describe('SharedEquipmentService', () => {
     it('should throw NotFoundException if activity not found', async () => {
       prisma.groupActivity.findUnique.mockResolvedValue(null);
 
-      await expect(service.getActivity('grp-1', 'act-999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getActivity('grp-1', 'act-999')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException if activity belongs to different group', async () => {
@@ -91,9 +89,7 @@ describe('SharedEquipmentService', () => {
         groupId: 'grp-other',
       });
 
-      await expect(service.getActivity('grp-1', 'act-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getActivity('grp-1', 'act-1')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -234,9 +230,9 @@ describe('SharedEquipmentService', () => {
         return fn(tx);
       });
 
-      await expect(
-        service.releaseResponsibility('item-1', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.releaseResponsibility('item-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw RESPONSIBILITY_NOT_FOUND if no responsibility exists', async () => {
@@ -249,9 +245,9 @@ describe('SharedEquipmentService', () => {
         return fn(tx);
       });
 
-      await expect(
-        service.releaseResponsibility('item-1', 'user-1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.releaseResponsibility('item-1', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -317,9 +313,9 @@ describe('SharedEquipmentService', () => {
         return fn(tx);
       });
 
-      await expect(
-        service.takeOver('item-1', 'user-1', { quantity: 1 }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.takeOver('item-1', 'user-1', { quantity: 1 })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw ALREADY_CLAIMED if user already has active responsibility', async () => {
@@ -349,9 +345,9 @@ describe('SharedEquipmentService', () => {
         return fn(tx);
       });
 
-      await expect(
-        service.takeOver('item-1', 'user-1', { quantity: 1 }),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.takeOver('item-1', 'user-1', { quantity: 1 })).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -373,7 +369,9 @@ describe('SharedEquipmentService', () => {
             }),
           },
           sharedResponsibility: {
-            create: jest.fn().mockResolvedValue({ id: 'resp-1', status: SharedResponsibilityStatus.COMMITTED }),
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'resp-1', status: SharedResponsibilityStatus.COMMITTED }),
           },
         };
         return fn(tx);
@@ -405,6 +403,41 @@ describe('SharedEquipmentService', () => {
       });
 
       await service.releaseResponsibility('item-1', 'user-1');
+
+      expect(redis.del).toHaveBeenCalledWith(ITEM_CACHE_KEY);
+      expect(redis.del).toHaveBeenCalledWith(READINESS_CACHE_KEY);
+    });
+
+    it('invalidates shared-items and readiness cache after takeOver', async () => {
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+
+      prisma.$transaction.mockImplementation(async (fn: any) => {
+        const missingResponsibility = {
+          id: 'resp-missing',
+          userId: 'user-2',
+          committedQuantity: 1,
+          status: SharedResponsibilityStatus.COULD_NOT_BRING,
+        };
+        const tx = {
+          sharedItem: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'item-1',
+              requiredQuantity: 1,
+              responsibilities: [missingResponsibility],
+            }),
+          },
+          sharedResponsibility: {
+            update: jest.fn().mockResolvedValue(missingResponsibility),
+            create: jest.fn().mockResolvedValue({
+              id: 'resp-takeover',
+              status: SharedResponsibilityStatus.COMMITTED,
+            }),
+          },
+        };
+        return fn(tx);
+      });
+
+      await service.takeOver('item-1', 'user-1', { quantity: 1 });
 
       expect(redis.del).toHaveBeenCalledWith(ITEM_CACHE_KEY);
       expect(redis.del).toHaveBeenCalledWith(READINESS_CACHE_KEY);

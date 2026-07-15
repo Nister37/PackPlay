@@ -35,6 +35,69 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    container_name: packplay-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-packplay}:${MYSQL_PASSWORD:-packplay_secret}@mysql:3306/${MYSQL_DATABASE:-packplay}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      REDIS_DB: 0
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production-min-32-chars}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@packplay.app}
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fs http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  migrate:
+    container_name: packplay-migrate
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-packplay}:${MYSQL_PASSWORD:-packplay_secret}@mysql:3306/${MYSQL_DATABASE:-packplay}
+    command: npx prisma migrate deploy
+    restart: 'no'
+
+  web:
+    container_name: packplay-web
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://api:3000
+
 volumes:
   mysql_data:
   redis_data:

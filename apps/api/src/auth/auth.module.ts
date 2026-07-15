@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './services/auth.service';
 import { ConsoleEmailService } from './services/console-email.service';
+import { SmtpEmailService } from './services/smtp-email.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { EMAIL_SERVICE } from './interfaces';
 
@@ -41,7 +42,14 @@ import { EMAIL_SERVICE } from './interfaces';
     JwtStrategy,
     {
       provide: EMAIL_SERVICE,
-      useClass: ConsoleEmailService,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const smtpHost = configService.get<string>('SMTP_HOST');
+        if (smtpHost) {
+          return new SmtpEmailService(configService);
+        }
+        return new ConsoleEmailService();
+      },
     },
   ],
   exports: [AuthService, JwtStrategy],

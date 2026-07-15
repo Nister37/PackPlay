@@ -30,7 +30,7 @@ function mapResponsibilityStatus(
 }
 
 export function SharedItemPage() {
-  const { groupId, itemId } = useParams<{ groupId: string; itemId: string }>();
+  const { itemId } = useParams<{ groupId: string; itemId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();

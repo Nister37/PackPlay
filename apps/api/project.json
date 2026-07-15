@@ -45,6 +45,24 @@
       "options": {
         "command": "ts-node --project tsconfig.base.json --transpile-only -r tsconfig-paths/register apps/api/src/openapi.ts"
       }
+    },
+    "integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest --config apps/api/test/jest-integration.config.ts --runInBand --forceExit"
+      },
+      "configurations": {
+        "ci": {}
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest --config apps/api/test/jest-e2e.config.ts --runInBand --forceExit"
+      },
+      "configurations": {
+        "ci": {}
+      }
     }
   }
 }

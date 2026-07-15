@@ -24,6 +24,14 @@ export interface TokenPair {
   refreshToken: string;
 }
 
+export interface LoginResult extends TokenPair {
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
+
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -131,7 +139,7 @@ export class AuthService {
     email: string,
     password: string,
     userAgent?: string,
-  ): Promise<TokenPair> {
+  ): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: { identity: true },
@@ -164,7 +172,10 @@ export class AuthService {
 
     const tokens = await this.createSession(user.id, user.email, userAgent);
     this.logger.log(`User logged in: ${user.id}`);
-    return tokens;
+    return {
+      ...tokens,
+      user: { id: user.id, email: user.email, name: user.name },
+    };
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -253,11 +264,18 @@ export class AuthService {
       },
     });
 
-    await this.emailService.send({
-      to: user.email,
-      subject: 'PackPlay - Password Reset',
-      body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
-    });
+    try {
+      await this.emailService.send({
+        to: user.email,
+        subject: 'PackPlay - Password Reset',
+        body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send password reset email to ${user.email}.`,
+        (error as Error).message,
+      );
+    }
 
     this.logger.log(`Password reset requested for user: ${user.id}`);
   }
@@ -376,10 +394,17 @@ export class AuthService {
       },
     });
 
-    await this.emailService.send({
-      to: email,
-      subject: 'PackPlay - Verify Your Email',
-      body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
-    });
+    try {
+      await this.emailService.send({
+        to: email,
+        subject: 'PackPlay - Verify Your Email',
+        body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${email}. Token was created — user can request resend.`,
+        (error as Error).message,
+      );
+    }
   }
 }
