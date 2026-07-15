@@ -228,12 +228,12 @@ export function GeneralPackingPage() {
   const { user } = useAuth();
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [cardIdx, setCardIdx] = useState(0);
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
+  const [decidedIds, setDecidedIds] = useState<Set<string>>(new Set());
   const touchStartX = useRef<number>(0);
 
   // ── Fetch groups ──────────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export function GeneralPackingPage() {
   const handleSelectGroup = (id: string) => {
     if (id === selectedGroupId) return;
     setSelectedGroupId(id);
-    setCardIdx(0);
+    setDecidedIds(new Set());
     setSlideDir(null);
     setIsAnimating(false);
     setDragX(0);
@@ -271,7 +271,7 @@ export function GeneralPackingPage() {
   useEffect(() => {
     if (!activityId || !user?.id) return;
     setSkippedIds(loadSkipped(user.id, activityId));
-    setCardIdx(0);
+    setDecidedIds(new Set());
   }, [activityId, user?.id]);
 
   // ── Fetch shared items ────────────────────────────────────────────────────
@@ -299,13 +299,16 @@ export function GeneralPackingPage() {
         return false;
       // User explicitly said "not my job" → skip
       if (skippedIds.has(item.id)) return false;
+      // User already decided this item in the current session → skip
+      if (decidedIds.has(item.id)) return false;
       return true;
     });
-  }, [sharedItems, skippedIds, user?.id]);
+  }, [sharedItems, skippedIds, decidedIds, user?.id]);
 
-  const currentItem = pendingItems[cardIdx] ?? null;
-  const totalCards = pendingItems.length;
-  const isDone = !itemsLoading && activityId != null && cardIdx >= totalCards;
+  const currentItem = pendingItems[0] ?? null;
+  const decidedCount = decidedIds.size;
+  const totalCards = pendingItems.length + decidedCount;
+  const isDone = !itemsLoading && activityId != null && pendingItems.length === 0;
 
   // ── Claim mutation ────────────────────────────────────────────────────────
   const claimMutation = useMutation({
@@ -319,7 +322,6 @@ export function GeneralPackingPage() {
 
   // ── Card advance ──────────────────────────────────────────────────────────
   const advance = () => {
-    setCardIdx((prev) => prev + 1);
     setDragX(0);
     setSlideDir(null);
     setIsAnimating(false);
@@ -330,6 +332,11 @@ export function GeneralPackingPage() {
     setIsAnimating(true);
     setIsDragging(false);
     setSlideDir(dir);
+
+    // Immediately mark as decided so it's removed from pendingItems
+    const nextDecided = new Set(decidedIds);
+    nextDecided.add(currentItem.id);
+    setDecidedIds(nextDecided);
 
     if (dir === 'right') {
       // Claim: "I'll bring it"
@@ -458,7 +465,7 @@ export function GeneralPackingPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setCardIdx(0);
+                  setDecidedIds(new Set());
                   queryClient.invalidateQueries({ queryKey: ['shared-items', activityId] });
                 }}
                 className="font-headline text-xs uppercase tracking-widest text-brand-muted border border-brand-border px-4 py-3"
@@ -475,17 +482,17 @@ export function GeneralPackingPage() {
             {/* Progress */}
             <div className="flex items-center justify-between mb-4">
               <span className="font-headline text-[10px] uppercase tracking-widest text-brand-muted">
-                {cardIdx + 1} / {totalCards}
+                {decidedCount + 1} / {totalCards}
               </span>
               <div className="flex gap-1">
-                {pendingItems.map((_, i) => (
+                {Array.from({ length: totalCards }).map((_, i) => (
                   <div
                     key={i}
                     className="h-1.5 rounded-full"
                     style={{
-                      width: i === cardIdx ? '24px' : '8px',
+                      width: i === decidedCount ? '24px' : '8px',
                       background:
-                        i < cardIdx ? '#2D6A4F' : i === cardIdx ? '#FF4D00' : '#E0D4CE',
+                        i < decidedCount ? '#2D6A4F' : i === decidedCount ? '#FF4D00' : '#E0D4CE',
                       transition: 'all 200ms',
                     }}
                   />
