@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsUUID, Min } from 'class-validator';
 import { SharedResponsibilityStatus } from '@prisma/client';
 
 export class ClaimResponsibilityDto {
@@ -28,7 +28,7 @@ export class ReportMissingDto {
 }
 
 export class TransferResponsibilityDto {
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   targetUserId!: string;
 

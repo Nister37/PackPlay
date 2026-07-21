@@ -102,6 +102,7 @@ export class GroupsController {
   }
 
   @Post(':groupId/transfer-ownership')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(GroupMemberGuard, GroupRoleGuard)
   @Roles('OWNER')
   @ApiOperation({ summary: 'Transfer group ownership to another member' })

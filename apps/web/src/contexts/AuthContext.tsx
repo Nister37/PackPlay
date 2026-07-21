@@ -55,6 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     resetLiveTakeoverSession();
     setUser(loggedInUser);
+
+    // Auto-join pending invite if present
+    const pendingInviteToken = localStorage.getItem('pendingInviteToken');
+    if (pendingInviteToken) {
+      localStorage.removeItem('pendingInviteToken');
+      try {
+        await api.post(`/invitations/${pendingInviteToken}/join`);
+      } catch {
+        // Silently ignore — user may already be a member or invite expired
+      }
+    }
   }, []);
 
   const logout = useCallback(async () => {

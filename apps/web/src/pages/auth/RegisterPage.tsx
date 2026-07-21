@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -12,6 +12,9 @@ interface FormErrors {
 
 export function RegisterPage() {
   const { register } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -107,7 +110,7 @@ export function RegisterPage() {
               </p>
             </div>
             <Link
-              to="/login"
+              to={`/login${redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
               className="font-headline font-bold text-sm uppercase tracking-wider text-brand-text underline hover:text-primary transition-colors"
             >
               Back to Login
@@ -168,7 +171,7 @@ export function RegisterPage() {
             <p className="mt-8 text-center font-body text-sm text-brand-muted">
               Already have an account?{' '}
               <Link
-                to="/login"
+                to={`/login${redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
                 className="font-headline font-bold uppercase tracking-wider text-brand-text hover:text-primary transition-colors"
               >
                 LOGIN

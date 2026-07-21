@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +23,7 @@ export function LoginPage() {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       if (
         err &&
@@ -64,6 +67,14 @@ export function LoginPage() {
           {error && (
             <div className="bg-white border border-[#BA1A1A] px-4 py-3 mb-4">
               <p className="font-body text-sm text-[#BA1A1A]">{error}</p>
+              {error.toLowerCase().includes('verify') && (
+                <Link
+                  to={`/resend-verification?email=${encodeURIComponent(email)}`}
+                  className="mt-2 inline-block font-headline text-xs font-bold uppercase tracking-wider text-brand-text underline"
+                >
+                  Resend verification email
+                </Link>
+              )}
             </div>
           )}
 
@@ -129,7 +140,7 @@ export function LoginPage() {
           <p className="mt-8 text-center font-body text-sm text-brand-muted">
             NO ACCOUNT?{' '}
             <Link
-              to="/register"
+              to={`/register${redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
               className="font-headline font-bold uppercase text-brand-text hover:text-primary transition-colors"
             >
               REGISTER

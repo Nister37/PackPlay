@@ -6,6 +6,10 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { JoinPage } from '@/pages/auth/JoinPage';
 import { WelcomePage } from '@/pages/auth/WelcomePage';
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage';
+import { ResendVerificationPage } from '@/pages/auth/ResendVerificationPage';
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { GroupsListPage } from '@/pages/groups/GroupsListPage';
 import { CreateGroupPage } from '@/pages/groups/CreateGroupPage';
@@ -15,6 +19,8 @@ import { EquipmentManifestPage } from '@/pages/equipment/EquipmentManifestPage';
 import { SharedItemPage } from '@/pages/equipment/SharedItemPage';
 import { PackingSessionPage } from '@/pages/packing/PackingSessionPage';
 import { GeneralPackingPage } from '@/pages/packing/GeneralPackingPage';
+import { ChecklistsPage } from '@/pages/checklists/ChecklistsPage';
+import { ChecklistDetailPage } from '@/pages/checklists/ChecklistDetailPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -42,6 +48,10 @@ export function App() {
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/resend-verification" element={<ResendVerificationPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/join/:token" element={<JoinPage />} />
 
       {/* Protected routes */}
@@ -108,6 +118,14 @@ export function App() {
             <PackingSessionPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/checklists"
+        element={<ProtectedRoute><ChecklistsPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/checklists/:checklistId"
+        element={<ProtectedRoute><ChecklistDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/packing"

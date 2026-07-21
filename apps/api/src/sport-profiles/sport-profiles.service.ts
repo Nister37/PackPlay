@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AppErrorCode } from '@packplay/common';
 import { CreateSportProfileDto, UpdateSportProfileDto } from './dto';
@@ -29,21 +25,14 @@ export class SportProfilesService {
   }
 
   async getById(profileId: string, userId: string) {
-    const profile = await this.prisma.sportProfile.findUnique({
-      where: { id: profileId },
+    const profile = await this.prisma.sportProfile.findFirst({
+      where: { id: profileId, userId },
     });
 
     if (!profile) {
       throw new NotFoundException({
         code: AppErrorCode.SPORT_PROFILE_NOT_FOUND,
         message: 'Sport profile not found',
-      });
-    }
-
-    if (profile.userId !== userId) {
-      throw new ForbiddenException({
-        code: AppErrorCode.NOT_PROFILE_OWNER,
-        message: 'You do not own this sport profile',
       });
     }
 

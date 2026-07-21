@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Req,
@@ -37,12 +39,14 @@ export class ResponsibilitiesController {
   }
 
   @Post('release')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Release responsibility for a shared item' })
   async release(@Param('itemId') itemId: string, @Req() req: any) {
     return this.sharedEquipmentService.releaseResponsibility(itemId, req.user.id);
   }
 
   @Post('pack')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark responsibility as packed' })
   async pack(
     @Param('itemId') itemId: string,
@@ -53,6 +57,7 @@ export class ResponsibilitiesController {
   }
 
   @Post('extra')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bring extra units' })
   async extra(
     @Param('itemId') itemId: string,
@@ -63,6 +68,7 @@ export class ResponsibilitiesController {
   }
 
   @Post('report-missing')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Report item as missing (FORGOT/COULD_NOT_BRING/REPLACEMENT_ARRANGED)' })
   async reportMissing(
     @Param('itemId') itemId: string,
@@ -73,6 +79,7 @@ export class ResponsibilitiesController {
   }
 
   @Post('take-over')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Take over from a missing item' })
   async takeOver(
     @Param('itemId') itemId: string,
@@ -83,6 +90,7 @@ export class ResponsibilitiesController {
   }
 
   @Post('transfer')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Transfer responsibility to another member' })
   async transfer(
     @Param('itemId') itemId: string,
@@ -92,9 +100,20 @@ export class ResponsibilitiesController {
     return this.sharedEquipmentService.transferResponsibility(itemId, req.user.id, dto);
   }
 
+  @Post('transfers/:transferId/accept')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Accept a pending responsibility transfer' })
+  async acceptTransfer(
+    @Param('itemId') itemId: string,
+    @Param('transferId') transferId: string,
+    @Req() req: any,
+  ) {
+    return this.sharedEquipmentService.acceptTransfer(itemId, transferId, req.user.id);
+  }
+
   @Get('coverage')
   @ApiOperation({ summary: 'Get coverage status for a shared item' })
-  async getCoverage(@Param('itemId') itemId: string) {
-    return this.sharedEquipmentService.getCoverage(itemId);
+  async getCoverage(@Param('itemId') itemId: string, @Req() req: any) {
+    return this.sharedEquipmentService.getCoverage(itemId, req.user.id);
   }
 }

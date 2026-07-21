@@ -7,12 +7,11 @@ import {
   HttpStatus,
   Param,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
@@ -38,9 +37,20 @@ export class InvitationsController {
     return this.invitationsService.createInvitation(groupId, req.user.id, dto);
   }
 
-  @Get('invitations/:token/info')
+  @Post('groups/:groupId/invitations/regenerate')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberGuard, GroupRoleGuard)
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Revoke active invitations and create a replacement' })
+  async regenerateInvitation(
+    @Param('groupId') groupId: string,
+    @Req() req: any,
+    @Body() dto: CreateInvitationDto,
+  ) {
+    return this.invitationsService.regenerateInvitation(groupId, req.user.id, dto);
+  }
+
+  @Get('invitations/:token/info')
   @ApiOperation({ summary: 'Preview invitation info before joining' })
   async getInvitationInfo(@Param('token') token: string) {
     return this.invitationsService.getInvitationInfo(token);
@@ -73,14 +83,12 @@ export class InvitationsController {
   @Roles('OWNER', 'ADMIN')
   @ApiOperation({ summary: 'Generate QR code for an invitation (OWNER/ADMIN)' })
   @ApiProduces('image/png')
-  @ApiQuery({ name: 'token', required: true, description: 'Raw invitation token' })
   async getInvitationQr(
     @Param('groupId') groupId: string,
     @Param('invitationId') invitationId: string,
-    @Query('token') token: string,
     @Res() res: Response,
   ) {
-    await this.invitationsService.getInvitationForQr(groupId, invitationId);
+    const token = await this.invitationsService.getInvitationForQr(groupId, invitationId);
     const buffer = await this.invitationsService.generateQrBuffer(token);
     res.set({
       'Content-Type': 'image/png',

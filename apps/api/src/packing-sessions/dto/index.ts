@@ -1,10 +1,13 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StartPackingSessionDto {
-  @ApiProperty({ description: 'Checklist to pack from' })
+  @ApiPropertyOptional({
+    description: 'Checklist to pack from (resolved automatically from activity if not provided)',
+  })
+  @IsOptional()
   @IsUUID()
-  checklistId!: string;
+  checklistId?: string;
 
   @ApiPropertyOptional({ description: 'Group activity ID for group packing sessions' })
   @IsOptional()
@@ -27,7 +30,9 @@ export class RecordDecisionDto {
   @IsEnum(['PACKED', 'NOT_PACKED', 'SKIPPED'])
   decision!: 'PACKED' | 'NOT_PACKED' | 'SKIPPED';
 
-  @ApiPropertyOptional({ enum: ['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED', 'NOT_NEEDED'] })
+  @ApiPropertyOptional({
+    enum: ['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED', 'NOT_NEEDED'],
+  })
   @IsOptional()
   @IsEnum(['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED', 'NOT_NEEDED'])
   reason?: 'FORGOT' | 'COULD_NOT_BRING' | 'REPLACEMENT_ARRANGED' | 'NOT_NEEDED';
@@ -35,6 +40,7 @@ export class RecordDecisionDto {
   @ApiPropertyOptional({ description: 'Additional notes' })
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   notes?: string;
 }
 

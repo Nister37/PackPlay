@@ -31,7 +31,7 @@ export class EquipmentItemsService {
         category: dto.category,
         isMandatory: dto.isMandatory ?? false,
         notes: dto.notes,
-        sortOrder: nextSortOrder,
+        sortOrder: dto.sortOrder ?? nextSortOrder,
       },
     });
   }

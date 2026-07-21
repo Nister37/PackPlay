@@ -5,14 +5,17 @@ import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import api from '@/lib/api';
-import type { PackingSession, SharedItem } from '@/types';
+import type { EquipmentItem, PackingSession, SharedItemWithCoverage } from '@/types';
 
 type DecisionType = 'PACKED' | 'NOT_PACKED' | 'SKIPPED';
 
 interface DecidedItem {
-  item: SharedItem;
+  item: EquipmentItem;
   decision: DecisionType;
+  reason?: MissingReason;
 }
+
+type MissingReason = 'FORGOT' | 'COULD_NOT_BRING' | 'REPLACEMENT_ARRANGED' | 'NOT_NEEDED';
 
 export function PackingSessionPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -22,7 +25,10 @@ export function PackingSessionPage() {
   const activityId = searchParams.get('activityId');
 
   const [session, setSession] = useState<PackingSession | null>(null);
-  const [remainingItems, setRemainingItems] = useState<SharedItem[]>([]);
+  const [remainingItems, setRemainingItems] = useState<EquipmentItem[]>([]);
+  const [unresolvedGroupItems, setUnresolvedGroupItems] = useState<SharedItemWithCoverage[]>([]);
+  const [unresolvedAcknowledged, setUnresolvedAcknowledged] = useState(false);
+  const [showReasonPicker, setShowReasonPicker] = useState(false);
   const [decidedItems, setDecidedItems] = useState<DecidedItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -54,21 +60,26 @@ export function PackingSessionPage() {
           params: { status: 'IN_PROGRESS' },
         });
         const sessions: PackingSession[] = listResp.data;
-        let activeSession = sessions.find((s) => s.activityId === activityId) ?? null;
+        let activeSession = sessions.find((s) => s.groupActivityId === activityId) ?? null;
 
         if (!activeSession) {
-          const createResp = await api.post('/packing-sessions', { activityId });
+          const createResp = await api.post('/packing-sessions', { groupActivityId: activityId });
           activeSession = createResp.data as PackingSession;
         }
 
         if (cancelled) return;
         setSession(activeSession);
 
-        const remainingResp = await api.get(`/packing-sessions/${activeSession!.id}/remaining`);
-        const remaining: SharedItem[] = remainingResp.data;
+        const [remainingResp, sharedItemsResp] = await Promise.all([
+          api.get(`/packing-sessions/${activeSession!.id}/remaining`),
+          api.get(`/activities/${activityId}/shared-items`),
+        ]);
+        const remaining: EquipmentItem[] = remainingResp.data;
+        const sharedItems: SharedItemWithCoverage[] = sharedItemsResp.data;
 
         if (cancelled) return;
         setRemainingItems(remaining);
+        setUnresolvedGroupItems(sharedItems.filter((item) => item.coverage.uncoveredQuantity > 0));
         setTotalItems(remaining.length);
         setCurrentIndex(0);
       } catch {
@@ -87,15 +98,17 @@ export function PackingSessionPage() {
   const recordDecision = useMutation({
     mutationFn: ({
       sessionId,
-      sharedItemId,
+      equipmentItemId,
       decision,
+      reason,
     }: {
       sessionId: string;
-      sharedItemId: string;
+      equipmentItemId: string;
       decision: DecisionType;
+      reason?: MissingReason;
     }) =>
       api
-        .post(`/packing-sessions/${sessionId}/decisions`, { sharedItemId, decision })
+        .post(`/packing-sessions/${sessionId}/decisions`, { equipmentItemId, decision, reason })
         .then((r) => r.data),
   });
 
@@ -134,7 +147,7 @@ export function PackingSessionPage() {
   }, [isAnimating, currentIndex]);
 
   const handleDecision = useCallback(
-    async (decision: DecisionType) => {
+    async (decision: DecisionType, reason?: MissingReason) => {
       if (!session || remainingItems.length === 0 || isAnimating) return;
       const currentItem = remainingItems[currentIndex];
       if (!currentItem) return;
@@ -143,11 +156,12 @@ export function PackingSessionPage() {
       try {
         await recordDecision.mutateAsync({
           sessionId: session.id,
-          sharedItemId: currentItem.id,
+          equipmentItemId: currentItem.id,
           decision,
+          reason,
         });
 
-        setDecidedItems((prev) => [...prev, { item: currentItem, decision }]);
+        setDecidedItems((prev) => [...prev, { item: currentItem, decision, reason }]);
 
         setRemainingItems((prev) => {
           const next = [...prev];
@@ -163,6 +177,7 @@ export function PackingSessionPage() {
         // silently keep current item shown
       } finally {
         setSessionLoading(false);
+        setShowReasonPicker(false);
       }
     },
     [session, remainingItems, currentIndex, recordDecision, isAnimating],
@@ -221,10 +236,19 @@ export function PackingSessionPage() {
         <p className="text-white/80 text-lg mt-2 font-body">
           {packedCount} ITEMS PACKED
         </p>
+        {unresolvedGroupItems.length > 0 && (
+          <div className="mt-6 w-full max-w-[320px] border border-white/60 p-4 text-left text-white">
+            <p className="font-headline text-sm font-bold uppercase">Unresolved group items</p>
+            <ul className="mt-2 text-sm list-disc pl-5">
+              {unresolvedGroupItems.map((item) => <li key={item.id}>{item.name} ({item.coverage.uncoveredQuantity} missing)</li>)}
+            </ul>
+            <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={unresolvedAcknowledged} onChange={(event) => setUnresolvedAcknowledged(event.target.checked)} />I reviewed these unresolved items</label>
+          </div>
+        )}
         <div className="mt-8 w-full max-w-[320px] flex flex-col gap-3">
           <button
             onClick={handleComplete}
-            disabled={completeMutation.isPending}
+            disabled={completeMutation.isPending || (unresolvedGroupItems.length > 0 && !unresolvedAcknowledged)}
             className="w-full min-h-[52px] bg-white text-[#2D6A4F] border-2 border-white font-headline font-bold uppercase tracking-wider disabled:opacity-60"
           >
             {completeMutation.isPending ? 'SAVING...' : 'COMPLETE MISSION'}
@@ -316,13 +340,11 @@ export function PackingSessionPage() {
 
                 {/* Requirements */}
                 <p className="font-headline text-sm text-brand-muted uppercase tracking-wider mb-1">
-                  REQ: {currentItem.requiredQuantity}{' '}
-                  {currentItem.unit ? currentItem.unit.toUpperCase() : 'UNIT'}
+                  REQ: {currentItem.quantity} UNIT(S)
                 </p>
-                {currentItem.coveredQuantity != null && currentItem.coveredQuantity > 0 && (
+                {currentItem.category && (
                   <p className="font-headline text-sm text-brand-muted uppercase tracking-wider mb-1">
-                    YOUR RESPONSIBILITY: {currentItem.coveredQuantity}{' '}
-                    {currentItem.unit ? currentItem.unit.toUpperCase() : 'UNIT'}
+                    CATEGORY: {currentItem.category}
                   </p>
                 )}
 
@@ -351,13 +373,20 @@ export function PackingSessionPage() {
 
       {/* Bottom Action Area */}
       <div className="bg-white border-t-2 border-[#1A1A1A] px-4 py-4 shrink-0">
-        <div className="flex gap-3">
+        {showReasonPicker ? (
+          <div className="grid grid-cols-2 gap-2">
+            {(['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED', 'NOT_NEEDED'] as const).map((reason) => (
+              <button key={reason} onClick={() => handleDecision('NOT_PACKED', reason)} disabled={sessionLoading} className="min-h-[48px] border border-[#1A1A1A] px-2 font-headline text-[10px] uppercase">{reason.replace(/_/g, ' ')}</button>
+            ))}
+            <button onClick={() => setShowReasonPicker(false)} className="col-span-2 text-xs uppercase underline">Cancel</button>
+          </div>
+        ) : <div className="flex gap-3">
           <button
-            onClick={() => handleDecision('SKIPPED')}
+            onClick={() => setShowReasonPicker(true)}
             disabled={sessionLoading || isAnimating}
             className="flex-1 min-h-[52px] border border-[#1A1A1A] bg-transparent font-headline font-bold uppercase tracking-wider text-brand-text disabled:opacity-50"
           >
-            SKIP
+            NOT PACKED
           </button>
           <button
             onClick={() => handleDecision('PACKED')}
@@ -366,7 +395,7 @@ export function PackingSessionPage() {
           >
             {sessionLoading ? '...' : 'PACKED ✓'}
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Abandon confirmation dialog */}

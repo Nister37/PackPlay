@@ -64,6 +64,16 @@ export interface SharedItemCoverage {
   coveredQuantity: number;
   missingQuantity: number;
   isCovered: boolean;
+  eligibleMembers?: Array<Pick<User, 'id' | 'name' | 'email'>>;
+  pendingTransfers?: Array<{
+    id: string;
+    fromUserId: string;
+    toUserId: string;
+    quantity: number;
+    status: 'PENDING';
+    fromUser: Pick<User, 'id' | 'name'>;
+    toUser: Pick<User, 'id' | 'name'>;
+  }>;
 }
 
 export interface ItemResponsibility {
@@ -97,7 +107,8 @@ export interface SharedItemWithCoverage {
 export interface PackingSession {
   id: string;
   userId: string;
-  activityId?: string;
+  checklistId: string;
+  groupActivityId?: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   startedAt: string;
   completedAt?: string;
@@ -110,6 +121,35 @@ export interface PackingDecision {
   equipmentItemId?: string;
   decision: 'PACKED' | 'NOT_PACKED' | 'SKIPPED';
   reason?: string;
+}
+
+export type ActivityType = 'TRAINING' | 'COMPETITION' | 'CASUAL' | 'TRAVEL';
+
+export interface SportProfile {
+  id: string;
+  name: string;
+  activityTypes: ActivityType[];
+}
+
+export interface EquipmentItem {
+  id: string;
+  checklistId: string;
+  name: string;
+  quantity: number;
+  category?: string | null;
+  isMandatory: boolean;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface PersonalChecklist {
+  id: string;
+  name: string;
+  sportProfileId: string;
+  activityType?: ActivityType | null;
+  isTemplate: boolean;
+  items?: EquipmentItem[];
+  _count?: { items: number };
 }
 
 export interface Notification {

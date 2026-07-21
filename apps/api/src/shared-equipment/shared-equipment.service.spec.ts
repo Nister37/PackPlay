@@ -1,14 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SharedResponsibilityStatus } from '@prisma/client';
+import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prisma/client';
 import { SharedEquipmentService } from './shared-equipment.service';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SharedEquipmentService', () => {
   let service: SharedEquipmentService;
   let prisma: jest.Mocked<any>;
   let redis: jest.Mocked<any>;
+  let notifications: jest.Mocked<any>;
 
   beforeEach(async () => {
     const mockPrisma = {
@@ -19,7 +21,7 @@ describe('SharedEquipmentService', () => {
       },
       sharedItem: {
         create: jest.fn(),
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ groupActivity: { group: { members: [{ id: 'member-1' }] } } }),
         findMany: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -39,17 +41,23 @@ describe('SharedEquipmentService', () => {
       delByPattern: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockNotifications = {
+      createNotificationsBatch: jest.fn().mockResolvedValue({ count: 0 }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SharedEquipmentService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RedisService, useValue: mockRedis },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
     service = module.get<SharedEquipmentService>(SharedEquipmentService);
     prisma = module.get(PrismaService);
     redis = module.get(RedisService);
+    notifications = module.get(NotificationsService);
   });
 
   it('should be defined', () => {
@@ -318,7 +326,7 @@ describe('SharedEquipmentService', () => {
       );
     });
 
-    it('should throw ALREADY_CLAIMED if user already has active responsibility', async () => {
+    it('should add the takeover quantity to an existing active responsibility', async () => {
       const mockItem = {
         id: 'item-1',
         requiredQuantity: 2,
@@ -341,13 +349,26 @@ describe('SharedEquipmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const tx = {
           sharedItem: { findUnique: jest.fn().mockResolvedValue(mockItem) },
+          sharedResponsibility: {
+            update: jest
+              .fn()
+              .mockResolvedValueOnce({
+                ...mockItem.responsibilities[0],
+                status: SharedResponsibilityStatus.REPLACEMENT_ARRANGED,
+              })
+              .mockResolvedValueOnce({
+                ...mockItem.responsibilities[1],
+                committedQuantity: 2,
+                status: SharedResponsibilityStatus.COMMITTED,
+              }),
+          },
         };
         return fn(tx);
       });
 
-      await expect(service.takeOver('item-1', 'user-1', { quantity: 1 })).rejects.toThrow(
-        ConflictException,
-      );
+      const result = await service.takeOver('item-1', 'user-1', { quantity: 1 });
+      expect(result.committedQuantity).toBe(2);
+      expect(result.status).toBe(SharedResponsibilityStatus.COMMITTED);
     });
   });
 
@@ -357,7 +378,7 @@ describe('SharedEquipmentService', () => {
     const READINESS_CACHE_KEY = `readiness:activity:${ACTIVITY_ID}`;
 
     it('invalidates shared-items and readiness cache after claimResponsibility', async () => {
-      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID, groupActivity: { group: { members: [{ id: 'member-1' }] } } });
 
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const tx = {
@@ -384,7 +405,7 @@ describe('SharedEquipmentService', () => {
     });
 
     it('invalidates cache after releaseResponsibility', async () => {
-      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID, groupActivity: { group: { members: [{ id: 'member-1' }] } } });
 
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const tx = {
@@ -409,7 +430,7 @@ describe('SharedEquipmentService', () => {
     });
 
     it('invalidates shared-items and readiness cache after takeOver', async () => {
-      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID, groupActivity: { group: { members: [{ id: 'member-1' }] } } });
 
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const missingResponsibility = {
@@ -444,7 +465,7 @@ describe('SharedEquipmentService', () => {
     });
 
     it('does NOT invalidate cache when claimResponsibility throws', async () => {
-      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID });
+      prisma.sharedItem.findUnique.mockResolvedValue({ groupActivityId: ACTIVITY_ID, groupActivity: { group: { members: [{ id: 'member-1' }] } } });
 
       prisma.$transaction.mockImplementation(async (fn: any) => {
         const tx = {
@@ -514,6 +535,42 @@ describe('SharedEquipmentService', () => {
           targetUserId: 'user-external',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should keep the source assignment active until the target accepts', async () => {
+      const source = { id: 'resp-1', committedQuantity: 2, status: SharedResponsibilityStatus.COMMITTED };
+      const created = { id: 'transfer-1', status: ResponsibilityTransferStatus.PENDING };
+      const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+      const create = jest.fn().mockResolvedValue(created);
+      const updateSource = jest.fn();
+      prisma.$transaction.mockImplementation((fn: any) => fn({
+        sharedResponsibility: {
+          findUnique: jest.fn().mockResolvedValueOnce(source).mockResolvedValueOnce(null),
+          update: updateSource,
+        },
+        sharedItem: { findUnique: jest.fn().mockResolvedValue({ groupActivity: { group: { members: [{ userId: 'user-2' }] } } }) },
+        responsibilityTransfer: { updateMany, create },
+      }));
+
+      const result = await service.transferResponsibility('item-1', 'user-1', { targetUserId: 'user-2', quantity: 1 });
+
+      expect(result).toEqual(created);
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fromUserId: 'user-1', toUserId: 'user-2' }) }));
+      expect(updateSource).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acceptTransfer security', () => {
+    it('does not reveal or accept a transfer addressed to another user', async () => {
+      prisma.$transaction.mockImplementation((fn: any) => fn({
+        responsibilityTransfer: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'transfer-1', sharedItemId: 'item-1', fromUserId: 'user-1', toUserId: 'user-2', quantity: 1, status: ResponsibilityTransferStatus.PENDING,
+          }),
+        },
+      }));
+
+      await expect(service.acceptTransfer('item-1', 'transfer-1', 'attacker')).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   UseGuards,
   Headers,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -21,22 +22,20 @@ import {
   PasswordResetConfirmDto,
 } from './dto';
 
+const AUTH_RATE_LIMIT = process.env.NODE_ENV === 'test' ? 1000 : 5;
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: 60000 } })
   @ApiOperation({ summary: 'Register a new account' })
   @ApiResponse({ status: 201, description: 'Account created' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(@Body() dto: RegisterDto) {
-    const result = await this.authService.register(
-      dto.email,
-      dto.password,
-      dto.name,
-    );
+    const result = await this.authService.register(dto.email, dto.password, dto.name);
     return { message: 'Registration successful. Please verify your email.', ...result };
   }
 
@@ -51,7 +50,7 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiResponse({ status: 200, description: 'Verification email sent if account exists' })
@@ -61,20 +60,13 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(
-    @Body() dto: LoginDto,
-    @Headers('user-agent') userAgent?: string,
-  ) {
-    const tokens = await this.authService.login(
-      dto.email,
-      dto.password,
-      userAgent,
-    );
+  async login(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
+    const tokens = await this.authService.login(dto.email, dto.password, userAgent);
     return tokens;
   }
 
@@ -84,8 +76,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and revoke session' })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  async logout(@Body() dto: RefreshTokenDto) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(@Req() req: any, @Body() dto: RefreshTokenDto) {
+    await this.authService.logout(req.user.id, dto.refreshToken);
     return { message: 'Logged out successfully' };
   }
 
@@ -94,16 +86,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'New token pair' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
-  async refresh(
-    @Body() dto: RefreshTokenDto,
-    @Headers('user-agent') userAgent?: string,
-  ) {
+  async refresh(@Body() dto: RefreshTokenDto, @Headers('user-agent') userAgent?: string) {
     const tokens = await this.authService.refresh(dto.refreshToken, userAgent);
     return tokens;
   }
 
   @Post('password-reset/request')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset' })
   @ApiResponse({ status: 200, description: 'Reset email sent if account exists' })
@@ -113,7 +102,7 @@ export class AuthController {
   }
 
   @Post('password-reset/confirm')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Set new password with reset token' })
   @ApiResponse({ status: 200, description: 'Password reset successful' })

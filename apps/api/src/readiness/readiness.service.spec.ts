@@ -12,6 +12,7 @@ describe('ReadinessService', () => {
     prisma = {
       packingSession: { findUnique: jest.fn(), findMany: jest.fn() },
       groupActivity: { findUnique: jest.fn() },
+      groupMember: { findFirst: jest.fn().mockResolvedValue({ id: 'member-1' }) },
     };
 
     const redis = {
@@ -145,23 +146,17 @@ describe('ReadinessService', () => {
           {
             id: 'shared-1',
             requiredQuantity: 2,
-            responsibilities: [
-              { committedQuantity: 2, status: 'COMMITTED' },
-            ],
+            responsibilities: [{ committedQuantity: 2, status: 'COMMITTED' }],
           },
           {
             id: 'shared-2',
             requiredQuantity: 1,
-            responsibilities: [
-              { committedQuantity: 1, status: 'PACKED' },
-            ],
+            responsibilities: [{ committedQuantity: 1, status: 'PACKED' }],
           },
           {
             id: 'shared-3',
             requiredQuantity: 3,
-            responsibilities: [
-              { committedQuantity: 1, status: 'COMMITTED' },
-            ],
+            responsibilities: [{ committedQuantity: 1, status: 'COMMITTED' }],
           },
         ],
         group: {
@@ -175,7 +170,7 @@ describe('ReadinessService', () => {
       // Single findMany call returns no sessions for any member
       prisma.packingSession.findMany.mockResolvedValue([]);
 
-      const result = await service.getGroupReadiness('activity-1');
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
       expect(result.totalSharedItems).toBe(3);
       expect(result.coveredSharedItems).toBe(2); // shared-1 and shared-2 are covered
       expect(result.groupPercentage).toBe(67); // Math.round(2/3 * 100)
@@ -199,7 +194,7 @@ describe('ReadinessService', () => {
 
       prisma.packingSession.findMany.mockResolvedValue([]);
 
-      const result = await service.getGroupReadiness('activity-1');
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
       expect(result.groupPercentage).toBe(100);
     });
 
@@ -213,13 +208,13 @@ describe('ReadinessService', () => {
 
       prisma.packingSession.findMany.mockResolvedValue([]);
 
-      const result = await service.getGroupReadiness('activity-1');
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
       expect(result.groupPercentage).toBe(100);
     });
 
     it('should throw if activity not found', async () => {
-      prisma.groupActivity.findUnique.mockResolvedValue(null);
-      await expect(service.getGroupReadiness('bad')).rejects.toThrow(NotFoundException);
+      prisma.groupMember.findFirst.mockResolvedValue(null);
+      await expect(service.getGroupReadiness('bad', 'user-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should include per-member readiness from their latest session', async () => {
@@ -228,9 +223,7 @@ describe('ReadinessService', () => {
         groupId: 'group-1',
         sharedItems: [],
         group: {
-          members: [
-            { userId: 'user-1', user: { id: 'user-1', name: 'Alice' } },
-          ],
+          members: [{ userId: 'user-1', user: { id: 'user-1', name: 'Alice' } }],
         },
       });
 
@@ -242,13 +235,11 @@ describe('ReadinessService', () => {
           checklist: {
             items: [{ id: 'item-1' }, { id: 'item-2' }],
           },
-          decisions: [
-            { equipmentItemId: 'item-1', decision: 'PACKED' },
-          ],
+          decisions: [{ equipmentItemId: 'item-1', decision: 'PACKED' }],
         },
       ]);
 
-      const result = await service.getGroupReadiness('activity-1');
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
       expect(result.memberReadiness).toHaveLength(1);
       expect(result.memberReadiness[0].percentage).toBe(50);
       expect(result.memberReadiness[0].packedMandatoryItems).toBe(1);

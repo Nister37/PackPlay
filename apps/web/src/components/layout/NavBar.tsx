@@ -27,6 +27,7 @@ const PlusIcon = () => (
 
 const tabs = [
   { label: 'PACKING', path: '/packing', Icon: PackingIcon },
+  { label: 'CHECKLISTS', path: '/checklists', Icon: PackingIcon },
   { label: 'MY GROUP', path: '/groups', Icon: GroupIcon },
   { label: 'CREATE\nGROUP', path: '/groups/new', Icon: PlusIcon },
 ];

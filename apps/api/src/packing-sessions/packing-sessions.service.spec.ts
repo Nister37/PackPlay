@@ -5,7 +5,7 @@ import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PackingGateway } from '../realtime/packing.gateway';
-import { PackingSessionStatus } from '@prisma/client';
+import { PackingSessionStatus, SharedResponsibilityStatus } from '@prisma/client';
 
 describe('PackingSessionsService', () => {
   let service: PackingSessionsService;
@@ -17,11 +17,20 @@ describe('PackingSessionsService', () => {
     prisma = {
       checklist: { findUnique: jest.fn() },
       groupActivity: { findUnique: jest.fn() },
-      packingSession: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      packingSession: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
       packingDecision: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
-      equipmentItem: { findMany: jest.fn() },
+      equipmentItem: {
+        findMany: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: 'item-1' }),
+      },
       sharedResponsibility: { findUnique: jest.fn(), update: jest.fn() },
-      sharedItem: { findUnique: jest.fn() },
+      sharedItem: { findUnique: jest.fn(), findFirst: jest.fn() },
+      groupMember: { findUnique: jest.fn() },
     };
 
     notificationsService = {
@@ -82,9 +91,9 @@ describe('PackingSessionsService', () => {
 
     it('should throw if checklist belongs to another user', async () => {
       prisma.checklist.findUnique.mockResolvedValue({ id: 'checklist-1', userId: 'other-user' });
-      await expect(
-        service.startSession('user-1', { checklistId: 'checklist-1' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.startSession('user-1', { checklistId: 'checklist-1' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -101,10 +110,7 @@ describe('PackingSessionsService', () => {
         status: PackingSessionStatus.IN_PROGRESS,
       });
 
-      prisma.equipmentItem.findMany.mockResolvedValue([
-        { id: 'item-1' },
-        { id: 'item-2' },
-      ]);
+      prisma.equipmentItem.findMany.mockResolvedValue([{ id: 'item-1' }, { id: 'item-2' }]);
 
       prisma.packingDecision.findMany.mockResolvedValue([
         { equipmentItemId: 'item-1', decision: 'PACKED' },
@@ -143,9 +149,7 @@ describe('PackingSessionsService', () => {
         { equipmentItemId: 'item-1', decision: 'PACKED' },
       ]);
 
-      await expect(service.completeSession(userId, sessionId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.completeSession(userId, sessionId)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw if session is already completed', async () => {
@@ -244,6 +248,37 @@ describe('PackingSessionsService', () => {
           decision: 'PACKED',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a decision for a shared item not assigned to the user', async () => {
+      prisma.packingSession.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+        checklistId: 'checklist-1',
+        groupActivityId: 'activity-1',
+        status: PackingSessionStatus.IN_PROGRESS,
+      });
+      prisma.sharedItem.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.recordDecision('user-1', 'session-1', {
+          sharedItemId: 'shared-item-1',
+          decision: 'PACKED',
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.sharedItem.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            responsibilities: {
+              some: {
+                userId: 'user-1',
+                status: { not: SharedResponsibilityStatus.RELEASED },
+              },
+            },
+          }),
+        }),
+      );
     });
   });
 

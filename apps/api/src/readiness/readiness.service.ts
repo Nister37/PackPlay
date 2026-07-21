@@ -80,7 +80,18 @@ export class ReadinessService {
     };
   }
 
-  async getGroupReadiness(activityId: string): Promise<GroupReadiness> {
+  async getGroupReadiness(activityId: string, userId: string): Promise<GroupReadiness> {
+    const membership = await this.prisma.groupMember.findFirst({
+      where: { userId, group: { activities: { some: { id: activityId } } } },
+      select: { id: true },
+    });
+    if (!membership) {
+      throw new NotFoundException({
+        code: AppErrorCode.ACTIVITY_NOT_FOUND,
+        message: 'Activity not found',
+      });
+    }
+
     const cacheKey = `readiness:activity:${activityId}`;
     const cached = await this.redis.get<GroupReadiness>(cacheKey);
     if (cached) {
@@ -127,9 +138,7 @@ export class ReadinessService {
     }).length;
 
     const groupPercentage =
-      totalSharedItems === 0
-        ? 100
-        : Math.round((coveredSharedItems / totalSharedItems) * 100);
+      totalSharedItems === 0 ? 100 : Math.round((coveredSharedItems / totalSharedItems) * 100);
 
     // Per-member readiness: fetch latest session per member in a SINGLE query
     const memberUserIds = activity.group.members.map((m) => m.userId);
@@ -154,9 +163,7 @@ export class ReadinessService {
       },
     });
 
-    const sessionsByUser = new Map(
-      latestSessions.map((s) => [s.userId, s]),
-    );
+    const sessionsByUser = new Map(latestSessions.map((s) => [s.userId, s]));
 
     const memberReadiness: MemberReadiness[] = activity.group.members.map((member) => {
       const latestSession = sessionsByUser.get(member.userId);

@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'api',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
@@ -7,9 +7,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/api',
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '\\.integration\\.spec\\.ts$',
-    '\\.e2e\\.spec\\.ts$',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '\\.integration\\.spec\\.ts$', '\\.e2e\\.spec\\.ts$'],
 };

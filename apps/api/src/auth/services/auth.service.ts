@@ -35,6 +35,7 @@ export interface LoginResult extends TokenPair {
 export interface JwtPayload {
   sub: string;
   email: string;
+  sid: string;
 }
 
 @Injectable()
@@ -48,11 +49,12 @@ export class AuthService {
     @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
   ) {}
 
-  async register(
-    email: string,
-    password: string,
-    name?: string,
-  ): Promise<{ userId: string }> {
+  private get requireEmailVerification(): boolean {
+    const value = this.configService.get<string>('REQUIRE_EMAIL_VERIFICATION');
+    return value !== 'false';
+  }
+
+  async register(email: string, password: string, name?: string): Promise<{ userId: string }> {
     const existing = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -70,13 +72,16 @@ export class AuthService {
       data: {
         email: email.toLowerCase(),
         name,
+        emailVerified: !this.requireEmailVerification,
         identity: {
           create: { passwordHash },
         },
       },
     });
 
-    await this.createAndSendVerificationToken(user.id, user.email);
+    if (this.requireEmailVerification) {
+      await this.createAndSendVerificationToken(user.id, user.email);
+    }
 
     this.logger.log(`User registered: ${user.id}`);
     return { userId: user.id };
@@ -135,11 +140,7 @@ export class AuthService {
     await this.createAndSendVerificationToken(user.id, user.email);
   }
 
-  async login(
-    email: string,
-    password: string,
-    userAgent?: string,
-  ): Promise<LoginResult> {
+  async login(email: string, password: string, userAgent?: string): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: { identity: true },
@@ -152,10 +153,7 @@ export class AuthService {
       });
     }
 
-    const passwordValid = await bcrypt.compare(
-      password,
-      user.identity.passwordHash,
-    );
+    const passwordValid = await bcrypt.compare(password, user.identity.passwordHash);
     if (!passwordValid) {
       throw new UnauthorizedException({
         code: AppErrorCode.INVALID_CREDENTIALS,
@@ -163,7 +161,7 @@ export class AuthService {
       });
     }
 
-    if (!user.emailVerified) {
+    if (this.requireEmailVerification && !user.emailVerified) {
       throw new UnauthorizedException({
         code: AppErrorCode.EMAIL_NOT_VERIFIED,
         message: 'Please verify your email before logging in',
@@ -178,14 +176,14 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logout(userId: string, refreshToken: string): Promise<void> {
     const tokenHash = hashToken(refreshToken);
 
     const session = await this.prisma.session.findUnique({
       where: { tokenHash },
     });
 
-    if (!session) return;
+    if (!session || session.userId !== userId) return;
 
     await this.prisma.session.update({
       where: { id: session.id },
@@ -195,10 +193,7 @@ export class AuthService {
     this.logger.log(`Session revoked: ${session.id}`);
   }
 
-  async refresh(
-    refreshToken: string,
-    userAgent?: string,
-  ): Promise<TokenPair> {
+  async refresh(refreshToken: string, userAgent?: string): Promise<TokenPair> {
     const tokenHash = hashToken(refreshToken);
 
     const session = await this.prisma.session.findUnique({
@@ -234,11 +229,7 @@ export class AuthService {
     });
 
     // Create new session (token rotation)
-    const tokens = await this.createSession(
-      session.userId,
-      session.user.email,
-      userAgent,
-    );
+    const tokens = await this.createSession(session.userId, session.user.email, userAgent);
 
     return tokens;
   }
@@ -264,11 +255,14 @@ export class AuthService {
       },
     });
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
     try {
       await this.emailService.send({
         to: user.email,
         subject: 'PackPlay - Password Reset',
-        body: `Your password reset token: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
+        body: `Click the link below to reset your password:\n\n${resetLink}\n\nOr use this token manually: ${rawToken}\nThis token expires in ${RESET_TOKEN_EXPIRY_HOURS} hour(s).`,
       });
     } catch (error) {
       this.logger.error(
@@ -280,10 +274,7 @@ export class AuthService {
     this.logger.log(`Password reset requested for user: ${user.id}`);
   }
 
-  async confirmPasswordReset(
-    token: string,
-    newPassword: string,
-  ): Promise<void> {
+  async confirmPasswordReset(token: string, newPassword: string): Promise<void> {
     const tokenHash = hashToken(token);
 
     const record = await this.prisma.passwordResetToken.findUnique({
@@ -333,18 +324,31 @@ export class AuthService {
   }
 
   async validateJwtPayload(payload: JwtPayload): Promise<{ id: string; email: string }> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-    });
-
-    if (!user) {
+    if (!payload.sid) {
       throw new UnauthorizedException({
         code: AppErrorCode.UNAUTHORIZED,
-        message: 'User not found',
+        message: 'Invalid access token',
       });
     }
 
-    return { id: user.id, email: user.email };
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: payload.sid,
+        userId: payload.sub,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: { select: { id: true, email: true } } },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException({
+        code: AppErrorCode.UNAUTHORIZED,
+        message: 'Session is no longer active',
+      });
+    }
+
+    return { id: session.user.id, email: session.user.email };
   }
 
   // --- Private helpers ---
@@ -359,7 +363,7 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
 
-    await this.prisma.session.create({
+    const session = await this.prisma.session.create({
       data: {
         userId,
         tokenHash,
@@ -368,23 +372,20 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.jwtService.sign(
-      { sub: userId, email } satisfies JwtPayload,
-    );
+    const accessToken = this.jwtService.sign({
+      sub: userId,
+      email,
+      sid: session.id,
+    } satisfies JwtPayload);
 
     return { accessToken, refreshToken: rawRefreshToken };
   }
 
-  private async createAndSendVerificationToken(
-    userId: string,
-    email: string,
-  ): Promise<void> {
+  private async createAndSendVerificationToken(userId: string, email: string): Promise<void> {
     const rawToken = generateToken();
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date();
-    expiresAt.setHours(
-      expiresAt.getHours() + VERIFICATION_TOKEN_EXPIRY_HOURS,
-    );
+    expiresAt.setHours(expiresAt.getHours() + VERIFICATION_TOKEN_EXPIRY_HOURS);
 
     await this.prisma.emailVerificationToken.create({
       data: {
@@ -394,11 +395,14 @@ export class AuthService {
       },
     });
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const verifyLink = `${frontendUrl}/verify-email?token=${rawToken}`;
+
     try {
       await this.emailService.send({
         to: email,
         subject: 'PackPlay - Verify Your Email',
-        body: `Your email verification token: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
+        body: `Click the link below to verify your email:\n\n${verifyLink}\n\nOr use this token manually: ${rawToken}\nThis token expires in ${VERIFICATION_TOKEN_EXPIRY_HOURS} hours.`,
       });
     } catch (error) {
       this.logger.error(

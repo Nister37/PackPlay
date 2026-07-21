@@ -590,7 +590,7 @@ function Step3({
               EXPIRES: 7 DAYS
             </p>
             <p className="font-body text-xs text-brand-muted truncate mt-0.5">
-              gearguardian.app/join/{tokenPreview}
+              {window.location.host}/join/{tokenPreview}
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SharedResponsibilityStatus } from '@prisma/client';
+import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
@@ -19,13 +19,15 @@ import {
   TakeOverDto,
   TransferResponsibilityDto,
 } from './dto/responsibility.dto';
-import { calculateCoverage, CoverageResult } from './coverage.util';
+import { calculateCoverage } from './coverage.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SharedEquipmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -82,7 +84,7 @@ export class SharedEquipmentService {
   // ─── Shared Items ─────────────────────────────────────────────────────
 
   async addSharedItem(activityId: string, userId: string, dto: CreateSharedItemDto) {
-    const activity = await this.findActivityOrThrow(activityId);
+    const activity = await this.assertActivityGroupMember(activityId, userId);
 
     const item = await this.prisma.sharedItem.create({
       data: {
@@ -101,7 +103,13 @@ export class SharedEquipmentService {
     return item;
   }
 
-  async updateSharedItem(activityId: string, itemId: string, dto: UpdateSharedItemDto) {
+  async updateSharedItem(
+    activityId: string,
+    itemId: string,
+    userId: string,
+    dto: UpdateSharedItemDto,
+  ) {
+    await this.assertActivityGroupMember(activityId, userId);
     const item = await this.findSharedItemOrThrow(activityId, itemId);
 
     const updated = await this.prisma.sharedItem.update({
@@ -119,13 +127,15 @@ export class SharedEquipmentService {
     return updated;
   }
 
-  async deleteSharedItem(activityId: string, itemId: string) {
+  async deleteSharedItem(activityId: string, itemId: string, userId: string) {
+    await this.assertActivityGroupMember(activityId, userId);
     await this.findSharedItemOrThrow(activityId, itemId);
     await this.prisma.sharedItem.delete({ where: { id: itemId } });
     await this.invalidateActivityCache(activityId);
   }
 
-  async listSharedItems(activityId: string) {
+  async listSharedItems(activityId: string, userId: string) {
+    await this.assertActivityGroupMember(activityId, userId);
     const cacheKey = `shared-items:activity:${activityId}`;
     const cached = await this.redis.get<unknown[]>(cacheKey);
     if (cached) {
@@ -176,6 +186,7 @@ export class SharedEquipmentService {
   // ─── Responsibilities ─────────────────────────────────────────────────
 
   async claimResponsibility(itemId: string, userId: string, dto: ClaimResponsibilityDto) {
+    await this.assertItemGroupMember(itemId, userId);
     const quantity = dto.quantity ?? 1;
 
     if (quantity < 1) {
@@ -339,7 +350,8 @@ export class SharedEquipmentService {
   }
 
   async reportMissing(itemId: string, userId: string, dto: ReportMissingDto) {
-    return this.prisma.$transaction(async (tx) => {
+    await this.assertItemGroupMember(itemId, userId);
+    const result = await this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
       });
@@ -365,9 +377,45 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: itemId },
+      select: {
+        name: true,
+        groupActivityId: true,
+        groupActivity: {
+          select: {
+            groupId: true,
+            group: { select: { members: { select: { userId: true } } } },
+          },
+        },
+      },
+    });
+
+    if (item) {
+      await this.notificationsService.createNotificationsBatch(
+        item.groupActivity.group.members
+          .filter((member) => member.userId !== userId)
+          .map((member) => ({
+            userId: member.userId,
+            groupId: item.groupActivity.groupId,
+            type: 'ITEM_MISSING',
+            payload: {
+              sharedItemId: itemId,
+              sharedItemName: item.name,
+              activityId: item.groupActivityId,
+              reportedByUserId: userId,
+              reason: dto.reason,
+            },
+          })),
+      );
+    }
+
+    return result;
   }
 
   async takeOver(itemId: string, userId: string, dto: TakeOverDto) {
+    await this.assertItemGroupMember(itemId, userId);
     const quantity = dto.quantity ?? 1;
     const activityId = await this.getActivityIdForItem(itemId);
 
@@ -406,18 +454,24 @@ export class SharedEquipmentService {
             r.status === SharedResponsibilityStatus.PACKED),
       );
 
-      if (existing) {
-        throw new ConflictException({
-          code: AppErrorCode.ALREADY_CLAIMED,
-          message: 'You already have an active responsibility for this item',
-        });
-      }
-
       // Mark the first missing responsibility as REPLACEMENT_ARRANGED
       await tx.sharedResponsibility.update({
         where: { id: missingResponsibilities[0].id },
         data: { status: SharedResponsibilityStatus.REPLACEMENT_ARRANGED },
       });
+
+      if (existing) {
+        return tx.sharedResponsibility.update({
+          where: { id: existing.id },
+          data: {
+            committedQuantity: existing.committedQuantity + quantity,
+            status: SharedResponsibilityStatus.COMMITTED,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        });
+      }
 
       // Create or update responsibility for the taking-over user
       const existingReleasedOrMissing = item.responsibilities.find(
@@ -458,6 +512,7 @@ export class SharedEquipmentService {
   }
 
   async transferResponsibility(itemId: string, userId: string, dto: TransferResponsibilityDto) {
+    await this.assertItemGroupMember(itemId, userId);
     return this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
@@ -500,6 +555,10 @@ export class SharedEquipmentService {
         });
       }
 
+      if (dto.targetUserId === userId) {
+        throw new BadRequestException('Responsibility must be transferred to another member');
+      }
+
       // Check if target already has an active responsibility
       const targetExisting = await tx.sharedResponsibility.findUnique({
         where: {
@@ -519,45 +578,111 @@ export class SharedEquipmentService {
       }
 
       const transferQuantity = dto.quantity ?? responsibility.committedQuantity;
-
-      // Release the current responsibility
-      await tx.sharedResponsibility.update({
-        where: { id: responsibility.id },
-        data: { status: SharedResponsibilityStatus.RELEASED },
-      });
-
-      // Create or update target's responsibility
-      if (targetExisting) {
-        return tx.sharedResponsibility.update({
-          where: { id: targetExisting.id },
-          data: {
-            committedQuantity: transferQuantity,
-            status: SharedResponsibilityStatus.COMMITTED,
-          },
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-          },
-        });
+      if (transferQuantity > responsibility.committedQuantity) {
+        throw new BadRequestException('Transfer quantity exceeds current responsibility');
       }
 
-      return tx.sharedResponsibility.create({
+      await tx.responsibilityTransfer.updateMany({
+        where: {
+          sharedItemId: itemId,
+          fromUserId: userId,
+          status: ResponsibilityTransferStatus.PENDING,
+        },
+        data: { status: ResponsibilityTransferStatus.CANCELLED, respondedAt: new Date() },
+      });
+
+      return tx.responsibilityTransfer.create({
         data: {
           sharedItemId: itemId,
-          userId: dto.targetUserId,
-          committedQuantity: transferQuantity,
-          status: SharedResponsibilityStatus.COMMITTED,
+          fromUserId: userId,
+          toUserId: dto.targetUserId,
+          quantity: transferQuantity,
         },
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          fromUser: { select: { id: true, name: true } },
+          toUser: { select: { id: true, name: true } },
         },
       });
     });
   }
 
-  async getCoverage(itemId: string): Promise<CoverageResult> {
+  async acceptTransfer(itemId: string, transferId: string, userId: string) {
+    await this.assertItemGroupMember(itemId, userId);
+    return this.prisma.$transaction(async (tx) => {
+      const transfer = await tx.responsibilityTransfer.findUnique({ where: { id: transferId } });
+      if (
+        !transfer ||
+        transfer.sharedItemId !== itemId ||
+        transfer.toUserId !== userId ||
+        transfer.status !== ResponsibilityTransferStatus.PENDING
+      ) {
+        throw new NotFoundException('Pending transfer not found');
+      }
+      const source = await tx.sharedResponsibility.findUnique({
+        where: { sharedItemId_userId: { sharedItemId: itemId, userId: transfer.fromUserId } },
+      });
+      if (
+        !source ||
+        source.status !== SharedResponsibilityStatus.COMMITTED ||
+        source.committedQuantity < transfer.quantity
+      ) {
+        throw new ConflictException('The original responsibility is no longer available');
+      }
+
+      const remaining = source.committedQuantity - transfer.quantity;
+      await tx.sharedResponsibility.update({
+        where: { id: source.id },
+        data: {
+          committedQuantity: Math.max(remaining, 1),
+          status:
+            remaining === 0
+              ? SharedResponsibilityStatus.RELEASED
+              : SharedResponsibilityStatus.COMMITTED,
+        },
+      });
+      await tx.sharedResponsibility.upsert({
+        where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
+        create: {
+          sharedItemId: itemId,
+          userId,
+          committedQuantity: transfer.quantity,
+          status: SharedResponsibilityStatus.COMMITTED,
+        },
+        update: {
+          committedQuantity: transfer.quantity,
+          status: SharedResponsibilityStatus.COMMITTED,
+        },
+      });
+      return tx.responsibilityTransfer.update({
+        where: { id: transferId },
+        data: { status: ResponsibilityTransferStatus.ACCEPTED, respondedAt: new Date() },
+      });
+    });
+  }
+
+  async getCoverage(itemId: string, userId: string) {
+    await this.assertItemGroupMember(itemId, userId);
     const item = await this.prisma.sharedItem.findUnique({
       where: { id: itemId },
-      include: { responsibilities: true },
+      include: {
+        responsibilities: { include: { user: { select: { id: true, name: true, email: true } } } },
+        groupActivity: {
+          include: {
+            group: {
+              include: {
+                members: { include: { user: { select: { id: true, name: true, email: true } } } },
+              },
+            },
+          },
+        },
+        responsibilityTransfers: {
+          where: { status: ResponsibilityTransferStatus.PENDING },
+          include: {
+            fromUser: { select: { id: true, name: true } },
+            toUser: { select: { id: true, name: true } },
+          },
+        },
+      },
     });
 
     if (!item) {
@@ -567,7 +692,27 @@ export class SharedEquipmentService {
       });
     }
 
-    return calculateCoverage(item.requiredQuantity, item.responsibilities);
+    const coverage = calculateCoverage(item.requiredQuantity, item.responsibilities);
+    return {
+      ...coverage,
+      item: {
+        id: item.id,
+        name: item.name,
+        description: item.notes,
+        requiredQuantity: item.requiredQuantity,
+        unit: 'unit(s)',
+      },
+      responsibilities: item.responsibilities.map((responsibility) => ({
+        ...responsibility,
+        quantity: responsibility.committedQuantity,
+      })),
+      coveredQuantity: coverage.committedQuantity,
+      missingQuantity: coverage.uncoveredQuantity,
+      isCovered: coverage.uncoveredQuantity === 0,
+      coverage,
+      eligibleMembers: item.groupActivity.group.members.map((member) => member.user),
+      pendingTransfers: item.responsibilityTransfers,
+    };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────
@@ -585,6 +730,43 @@ export class SharedEquipmentService {
     }
 
     return activity;
+  }
+
+  private async assertActivityGroupMember(activityId: string, userId: string) {
+    const activity = await this.prisma.groupActivity.findFirst({
+      where: {
+        id: activityId,
+        group: { members: { some: { userId } } },
+      },
+    });
+
+    if (!activity) {
+      throw new NotFoundException({
+        code: AppErrorCode.ACTIVITY_NOT_FOUND,
+        message: 'Activity not found',
+      });
+    }
+
+    return activity;
+  }
+
+  private async assertItemGroupMember(itemId: string, userId: string): Promise<void> {
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: itemId },
+      select: {
+        groupActivity: {
+          select: {
+            group: { select: { members: { where: { userId }, select: { id: true }, take: 1 } } },
+          },
+        },
+      },
+    });
+    if (!item?.groupActivity?.group?.members?.length) {
+      throw new NotFoundException({
+        code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
+        message: 'Shared item not found',
+      });
+    }
   }
 
   private async findSharedItemOrThrow(activityId: string, itemId: string) {
