@@ -14,6 +14,7 @@ role.
 | -------- | ---------------------------------------------- | ---------------------------------------- |
 | `POST`   | `/groups/:groupId/calendar-feeds/preview-url`  | Preview an HTTPS feed                    |
 | `POST`   | `/groups/:groupId/calendar-feeds/preview-file` | Preview supplied iCalendar text          |
+| `POST`   | `/groups/:groupId/calendar-feeds/import-file`  | Import reviewed iCalendar text once      |
 | `POST`   | `/groups/:groupId/calendar-feeds`              | Connect and initially synchronize a feed |
 | `GET`    | `/groups/:groupId/calendar-feeds`              | List feed status without private URLs    |
 | `POST`   | `/groups/:groupId/calendar-feeds/:feedId/sync` | Synchronize immediately                  |

@@ -4822,6 +4822,45 @@
         ]
       }
     },
+    "/groups/{groupId}/calendar-feeds/import-file": {
+      "post": {
+        "operationId": "CalendarImportsController_importFile",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCalendarFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import events from reviewed iCalendar content",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
     "/groups/{groupId}/calendar-feeds": {
       "post": {
         "operationId": "CalendarImportsController_connect",
@@ -6288,6 +6327,24 @@
         },
         "required": [
           "content"
+        ]
+      },
+      "ImportCalendarFileDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "UTF-8 iCalendar content",
+            "maxLength": 5000000
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "content",
+          "name"
         ]
       },
       "ConnectCalendarFeedDto": {
