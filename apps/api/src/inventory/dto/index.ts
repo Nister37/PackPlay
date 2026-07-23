@@ -8,3 +8,10 @@ export {
   CreateInventoryBatchDto,
   CreateStorageLocationDto,
 } from './stock.dto';
+export {
+  CheckoutInventoryDto,
+  InventoryStockTargetDto,
+  ReserveInventoryDto,
+  ReturnInventoryDto,
+  TransferCustodyDto,
+} from './operations.dto';
