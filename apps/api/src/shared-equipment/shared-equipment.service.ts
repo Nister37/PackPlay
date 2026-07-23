@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
@@ -21,6 +22,7 @@ import {
 } from './dto/responsibility.dto';
 import { calculateCoverage } from './coverage.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EquipmentCatalogueService } from '../equipment-catalogue/equipment-catalogue.service';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -28,6 +30,7 @@ export class SharedEquipmentService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly equipmentCatalogue?: EquipmentCatalogueService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -94,11 +97,18 @@ export class SharedEquipmentService {
         category: dto.category,
         isMandatory: dto.isMandatory ?? true,
         notes: dto.notes,
+        catalogueItemId: dto.catalogueItemId,
         createdById: userId,
       },
     });
 
     await this.invalidateActivityCache(activityId);
+    if (dto.catalogueItemId && this.equipmentCatalogue) {
+      await this.equipmentCatalogue.recordTeamUsage(
+        activity.groupId,
+        dto.catalogueItemId,
+      );
+    }
 
     return item;
   }

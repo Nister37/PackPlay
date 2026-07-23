@@ -107,6 +107,7 @@ export class ChecklistsService {
             isMandatory: item.isMandatory,
             notes: item.notes,
             sortOrder: item.sortOrder,
+            catalogueItemId: item.catalogueItemId,
           })),
         },
       },

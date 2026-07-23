@@ -32,6 +32,7 @@ export class EquipmentItemsService {
         isMandatory: dto.isMandatory ?? false,
         notes: dto.notes,
         sortOrder: dto.sortOrder ?? nextSortOrder,
+        catalogueItemId: dto.catalogueItemId,
       },
     });
   }
