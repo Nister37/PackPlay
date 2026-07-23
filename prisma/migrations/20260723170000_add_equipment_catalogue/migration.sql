@@ -78,3 +78,31 @@ ALTER TABLE `team_equipment_usage` ADD CONSTRAINT `team_equipment_usage_catalogu
 
 -- AddForeignKey
 ALTER TABLE `equipment_suggestion_preferences` ADD CONSTRAINT `equipment_suggestion_preferences_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Seed a deterministic starter catalogue while retaining custom-item support.
+INSERT INTO `equipment_catalogue_items`
+  (`id`, `canonical_name`, `category`, `sports`, `roles`, `active`, `created_at`, `updated_at`)
+VALUES
+  ('cat-football', 'Football', 'balls', JSON_ARRAY('football'), JSON_ARRAY('player', 'coach'), true, NOW(3), NOW(3)),
+  ('cat-goalkeeper-gloves', 'Goalkeeper gloves', 'protective', JSON_ARRAY('football'), JSON_ARRAY('goalkeeper'), true, NOW(3), NOW(3)),
+  ('cat-cones', 'Training cones', 'training', JSON_ARRAY('football', 'running', 'field-hockey'), JSON_ARRAY('coach'), true, NOW(3), NOW(3)),
+  ('cat-first-aid', 'First aid kit', 'safety', JSON_ARRAY(), JSON_ARRAY('coach', 'medic'), true, NOW(3), NOW(3)),
+  ('cat-water-bottle', 'Water bottle', 'hydration', JSON_ARRAY(), JSON_ARRAY(), true, NOW(3), NOW(3)),
+  ('cat-basketball', 'Basketball', 'balls', JSON_ARRAY('basketball'), JSON_ARRAY('player', 'coach'), true, NOW(3), NOW(3)),
+  ('cat-tennis-racket', 'Tennis racket', 'rackets', JSON_ARRAY('tennis'), JSON_ARRAY('player'), true, NOW(3), NOW(3)),
+  ('cat-tennis-ball', 'Tennis balls', 'balls', JSON_ARRAY('tennis'), JSON_ARRAY('player', 'coach'), true, NOW(3), NOW(3)),
+  ('cat-towel', 'Towel', 'personal', JSON_ARRAY(), JSON_ARRAY(), true, NOW(3), NOW(3)),
+  ('cat-sunscreen', 'Sunscreen', 'weather', JSON_ARRAY(), JSON_ARRAY(), true, NOW(3), NOW(3));
+
+INSERT INTO `equipment_catalogue_aliases` (`id`, `catalogue_item_id`, `alias`)
+VALUES
+  ('alias-soccer-ball', 'cat-football', 'soccer ball'),
+  ('alias-match-ball', 'cat-football', 'match ball'),
+  ('alias-keeper-gloves', 'cat-goalkeeper-gloves', 'keeper gloves'),
+  ('alias-markers', 'cat-cones', 'field markers'),
+  ('alias-medical-kit', 'cat-first-aid', 'medical kit'),
+  ('alias-water', 'cat-water-bottle', 'water'),
+  ('alias-hoops-ball', 'cat-basketball', 'hoops ball'),
+  ('alias-racquet', 'cat-tennis-racket', 'racquet'),
+  ('alias-tennis-balls', 'cat-tennis-ball', 'tennis ball'),
+  ('alias-sunblock', 'cat-sunscreen', 'sunblock');
