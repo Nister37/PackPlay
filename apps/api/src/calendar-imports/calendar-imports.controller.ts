@@ -1,24 +1,11 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GroupMemberRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles } from '../groups/decorators';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { CalendarImportsService } from './calendar-imports.service';
-import {
-  ConnectCalendarFeedDto,
-  PreviewCalendarFileDto,
-  PreviewCalendarUrlDto,
-} from './dto';
+import { ConnectCalendarFeedDto, PreviewCalendarFileDto, PreviewCalendarUrlDto } from './dto';
 
 @ApiTags('Calendar imports')
 @ApiBearerAuth()
@@ -65,10 +52,7 @@ export class CalendarImportsController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Synchronize a connected calendar feed now' })
-  sync(
-    @Param('groupId') groupId: string,
-    @Param('feedId') feedId: string,
-  ) {
+  sync(@Param('groupId') groupId: string, @Param('feedId') feedId: string) {
     return this.service.syncFeed(groupId, feedId);
   }
 
@@ -76,10 +60,7 @@ export class CalendarImportsController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Disconnect a feed while retaining imported events' })
-  disconnect(
-    @Param('groupId') groupId: string,
-    @Param('feedId') feedId: string,
-  ) {
+  disconnect(@Param('groupId') groupId: string, @Param('feedId') feedId: string) {
     return this.service.disconnect(groupId, feedId);
   }
 }

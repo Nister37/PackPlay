@@ -54,9 +54,7 @@ END:VCALENDAR`,
 
     expect(events).toHaveLength(4);
     expect(events.map((event) => event.title)).toContain('Moved practice');
-    expect(events.map((event) => event.recurrenceId)).not.toContain(
-      '2026-07-22T18:00:00.000Z',
-    );
+    expect(events.map((event) => event.recurrenceId)).not.toContain('2026-07-22T18:00:00.000Z');
   });
 
   it('preserves cancelled recurrence overrides', () => {

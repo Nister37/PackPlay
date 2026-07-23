@@ -42,26 +42,19 @@ export class CalendarParserService {
       if (event.recurrenceId) continue;
       const occurrences = this.expand(event, horizon);
       for (const occurrence of occurrences) {
-        const replacement = overrides.get(
-          `${event.uid}\0${occurrence.recurrenceId}`,
-        );
+        const replacement = overrides.get(`${event.uid}\0${occurrence.recurrenceId}`);
         result.push(replacement ?? occurrence);
       }
     }
     for (const event of raw) {
       if (
         event.recurrenceId &&
-        !result.some(
-          (item) =>
-            item.uid === event.uid && item.recurrenceId === event.recurrenceId,
-        )
+        !result.some((item) => item.uid === event.uid && item.recurrenceId === event.recurrenceId)
       ) {
         result.push(event);
       }
     }
-    return result.sort(
-      (left, right) => left.startsAt.getTime() - right.startsAt.getTime(),
-    );
+    return result.sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
   }
 
   private parseBlock(block: string) {
@@ -80,9 +73,7 @@ export class CalendarParserService {
     const sequence = Number.parseInt(get('SEQUENCE')?.value ?? '0', 10);
     const event = {
       uid: uid!.slice(0, 500),
-      recurrenceId: recurrence
-        ? this.date(recurrence).toISOString()
-        : '',
+      recurrenceId: recurrence ? this.date(recurrence).toISOString() : '',
       title,
       description: this.optionalText(get('DESCRIPTION')?.value),
       location: this.optionalText(get('LOCATION')?.value)?.slice(0, 200),
@@ -93,9 +84,7 @@ export class CalendarParserService {
       rrule: get('RRULE')?.value,
       exdates: properties
         .filter((item) => item.name === 'EXDATE')
-        .flatMap((item) =>
-          item.value.split(',').map((value) => this.date({ ...item, value })),
-        ),
+        .flatMap((item) => item.value.split(',').map((value) => this.date({ ...item, value }))),
     };
     return {
       ...event,
@@ -120,9 +109,7 @@ export class CalendarParserService {
       ? this.date({ name: 'UNTIL', parameters: {}, value: rule.UNTIL })
       : horizon;
     const limit = new Date(Math.min(until.getTime(), horizon.getTime()));
-    const duration = event.endsAt
-      ? event.endsAt.getTime() - event.startsAt.getTime()
-      : undefined;
+    const duration = event.endsAt ? event.endsAt.getTime() - event.startsAt.getTime() : undefined;
     const excluded = new Set(event.exdates.map((date) => date.toISOString()));
     const result: ParsedCalendarEvent[] = [];
     let cursor = new Date(event.startsAt);
@@ -132,9 +119,7 @@ export class CalendarParserService {
       .filter((day): day is number => day !== undefined);
 
     while (result.length < count && cursor <= limit) {
-      const elapsedDays = Math.floor(
-        (cursor.getTime() - event.startsAt.getTime()) / 86_400_000,
-      );
+      const elapsedDays = Math.floor((cursor.getTime() - event.startsAt.getTime()) / 86_400_000);
       const include =
         rule.FREQ === 'DAILY'
           ? elapsedDays % interval === 0
@@ -148,10 +133,7 @@ export class CalendarParserService {
         const occurrence = {
           ...event,
           startsAt: new Date(cursor),
-          endsAt:
-            duration === undefined
-              ? undefined
-              : new Date(cursor.getTime() + duration),
+          endsAt: duration === undefined ? undefined : new Date(cursor.getTime() + duration),
           recurrenceId: cursor.toISOString(),
         };
         result.push(this.publicEvent({ ...occurrence, sourceHash: this.hash(occurrence) }));
@@ -162,9 +144,7 @@ export class CalendarParserService {
     return result;
   }
 
-  private publicEvent(
-    event: ReturnType<CalendarParserService['parseBlock']>,
-  ): ParsedCalendarEvent {
+  private publicEvent(event: ReturnType<CalendarParserService['parseBlock']>): ParsedCalendarEvent {
     const { rrule: _rule, exdates: _dates, ...value } = event;
     return value;
   }
@@ -188,23 +168,12 @@ export class CalendarParserService {
   private date(property: Property): Date {
     const raw = property.value.trim();
     if (/^\d{8}$/.test(raw)) {
-      return new Date(
-        Date.UTC(+raw.slice(0, 4), +raw.slice(4, 6) - 1, +raw.slice(6, 8)),
-      );
+      return new Date(Date.UTC(+raw.slice(0, 4), +raw.slice(4, 6) - 1, +raw.slice(6, 8)));
     }
-    const match = raw.match(
-      /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/,
-    );
+    const match = raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/);
     if (!match) this.invalid(`Unsupported calendar date: ${raw}`);
     const parts = match!.slice(1, 7).map(Number);
-    const tentative = Date.UTC(
-      parts[0],
-      parts[1] - 1,
-      parts[2],
-      parts[3],
-      parts[4],
-      parts[5],
-    );
+    const tentative = Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
     if (match![7] || !property.parameters.TZID) return new Date(tentative);
     try {
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -255,9 +224,7 @@ export class CalendarParserService {
   }
 
   private weekday(value: string) {
-    const index = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].indexOf(
-      value.slice(-2),
-    );
+    const index = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].indexOf(value.slice(-2));
     return index < 0 ? undefined : index;
   }
 

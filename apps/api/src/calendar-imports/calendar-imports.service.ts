@@ -1,14 +1,6 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import {
-  ActivityType,
-  CalendarProvider,
-  GroupActivityStatus,
-} from '@prisma/client';
+import { ActivityType, CalendarProvider, GroupActivityStatus } from '@prisma/client';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../common/prisma.service';
 import { CalendarParserService, ParsedCalendarEvent } from './calendar-parser.service';
@@ -186,11 +178,7 @@ export class CalendarImportsService {
     return { created, updated, unchanged, total: events.length };
   }
 
-  private activityData(
-    groupId: string,
-    createdById: string,
-    event: ParsedCalendarEvent,
-  ) {
+  private activityData(groupId: string, createdById: string, event: ParsedCalendarEvent) {
     return {
       groupId,
       createdById,
@@ -200,9 +188,7 @@ export class CalendarImportsService {
       date: event.startsAt,
       endAt: event.endsAt,
       activityType: this.activityType(event.title),
-      status: event.cancelled
-        ? GroupActivityStatus.CANCELLED
-        : GroupActivityStatus.PUBLISHED,
+      status: event.cancelled ? GroupActivityStatus.CANCELLED : GroupActivityStatus.PUBLISHED,
     };
   }
 

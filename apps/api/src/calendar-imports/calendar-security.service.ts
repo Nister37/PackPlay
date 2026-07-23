@@ -1,15 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 import { AppErrorCode } from '@packplay/common';
@@ -21,10 +12,7 @@ export class CalendarSecurityService {
   encryptUrl(value: string) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key(), iv);
-    const ciphertext = Buffer.concat([
-      cipher.update(value, 'utf8'),
-      cipher.final(),
-    ]);
+    const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
     return [
       iv.toString('base64url'),
       cipher.getAuthTag().toString('base64url'),
@@ -82,9 +70,7 @@ export class CalendarSecurityService {
         continue;
       }
       if (!response.ok) {
-        throw new ServiceUnavailableException(
-          `Calendar feed returned HTTP ${response.status}`,
-        );
+        throw new ServiceUnavailableException(`Calendar feed returned HTTP ${response.status}`);
       }
       const contentLength = Number(response.headers.get('content-length') ?? 0);
       if (contentLength > 5_000_000) {
@@ -112,10 +98,7 @@ export class CalendarSecurityService {
       });
     }
     const addresses = await lookup(url.hostname, { all: true, verbatim: true });
-    if (
-      addresses.length === 0 ||
-      addresses.some((entry) => this.isPrivateAddress(entry.address))
-    ) {
+    if (addresses.length === 0 || addresses.some((entry) => this.isPrivateAddress(entry.address))) {
       throw new BadRequestException({
         code: AppErrorCode.VALIDATION_ERROR,
         message: 'Calendar feed host is not publicly routable',
@@ -159,9 +142,7 @@ export class CalendarSecurityService {
       this.config.get<string>('CALENDAR_FEED_ENCRYPTION_KEY') ??
       this.config.get<string>('JWT_SECRET');
     if (!secret || secret.length < 16) {
-      throw new ServiceUnavailableException(
-        'Calendar feed encryption is not configured',
-      );
+      throw new ServiceUnavailableException('Calendar feed encryption is not configured');
     }
     return createHash('sha256').update(secret).digest();
   }

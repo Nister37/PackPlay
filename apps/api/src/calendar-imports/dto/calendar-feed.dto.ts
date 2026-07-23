@@ -1,13 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CalendarProvider } from '@prisma/client';
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUrl,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
 
 export class PreviewCalendarUrlDto {
   @ApiProperty()

@@ -6,11 +6,7 @@ import { CalendarSecurityService } from './calendar-security.service';
 
 @Module({
   controllers: [CalendarImportsController],
-  providers: [
-    CalendarImportsService,
-    CalendarParserService,
-    CalendarSecurityService,
-  ],
+  providers: [CalendarImportsService, CalendarParserService, CalendarSecurityService],
   exports: [CalendarImportsService],
 })
 export class CalendarImportsModule {}
