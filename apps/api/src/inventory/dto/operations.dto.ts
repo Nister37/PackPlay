@@ -98,3 +98,33 @@ export class TransferCustodyDto {
   @IsUUID()
   holderId!: string;
 }
+
+export class ReportInventoryConditionDto extends InventoryStockTargetDto {
+  @ApiProperty({ enum: InventoryCondition })
+  @IsEnum(InventoryCondition)
+  condition!: InventoryCondition;
+
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['https'] })
+  @MaxLength(2048)
+  photoUrl?: string;
+}
+
+export class CorrectBatchQuantityDto {
+  @ApiProperty({ minimum: 0 })
+  @IsInt()
+  @Min(0)
+  quantity!: number;
+
+  @ApiProperty({ maxLength: 500 })
+  @IsString()
+  @MaxLength(500)
+  reason!: string;
+}

@@ -9,6 +9,8 @@ import {
   ReserveInventoryDto,
   ReturnInventoryDto,
   TransferCustodyDto,
+  ReportInventoryConditionDto,
+  CorrectBatchQuantityDto,
 } from './dto';
 import { InventoryOperationsService } from './inventory-operations.service';
 
@@ -74,5 +76,28 @@ export class InventoryOperationsController {
     @Body() dto: TransferCustodyDto,
   ) {
     return this.operations.transferCustody(groupId, custodyId, req.user.id, dto);
+  }
+
+  @Post('condition-reports')
+  @ApiOperation({ summary: 'Report damage or update stock condition' })
+  reportCondition(
+    @Param('groupId') groupId: string,
+    @Req() req: any,
+    @Body() dto: ReportInventoryConditionDto,
+  ) {
+    return this.operations.reportCondition(groupId, req.user.id, dto);
+  }
+
+  @Post('batches/:batchId/corrections')
+  @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
+  @UseGuards(GroupRoleGuard)
+  @ApiOperation({ summary: 'Append a reasoned batch quantity correction' })
+  correctBatch(
+    @Param('groupId') groupId: string,
+    @Param('batchId') batchId: string,
+    @Req() req: any,
+    @Body() dto: CorrectBatchQuantityDto,
+  ) {
+    return this.operations.correctBatch(groupId, batchId, req.user.id, dto);
   }
 }

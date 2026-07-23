@@ -20,6 +20,8 @@ import {
   ReserveInventoryDto,
   ReturnInventoryDto,
   TransferCustodyDto,
+  ReportInventoryConditionDto,
+  CorrectBatchQuantityDto,
 } from './dto';
 
 const USABLE: InventoryCondition[] = [
@@ -397,6 +399,129 @@ export class InventoryOperationsService {
     });
   }
 
+  async reportCondition(
+    groupId: string,
+    userId: string,
+    dto: ReportInventoryConditionDto,
+  ) {
+    this.assertSingleTarget(dto.batchId, dto.assetId);
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.batchId) {
+        const batch = await tx.inventoryBatch.findUnique({
+          where: { id: dto.batchId },
+          include: {
+            inventoryItem: true,
+            reservations: {
+              where: { status: InventoryReservationStatus.ACTIVE },
+            },
+            custodies: { where: { returnedAt: null } },
+          },
+        });
+        if (!batch || batch.inventoryItem.groupId !== groupId) this.stockNotFound();
+        const unavailable =
+          batch!.reservations.reduce((sum, item) => sum + item.quantity, 0) +
+          batch!.custodies.reduce((sum, item) => sum + item.quantity, 0);
+        await tx.inventoryBatch.update({
+          where: { id: dto.batchId },
+          data: {
+            condition: dto.condition,
+            availableQuantity: USABLE.includes(dto.condition)
+              ? Math.max(0, batch!.quantity - unavailable)
+              : 0,
+          },
+        });
+      } else {
+        const asset = await tx.inventoryAsset.findUnique({
+          where: { id: dto.assetId },
+          include: { inventoryItem: true },
+        });
+        if (!asset || asset.inventoryItem.groupId !== groupId) this.stockNotFound();
+        await tx.inventoryAsset.update({
+          where: { id: dto.assetId },
+          data: { condition: dto.condition },
+        });
+      }
+      const report = await tx.inventoryDamageReport.create({
+        data: {
+          batchId: dto.batchId,
+          assetId: dto.assetId,
+          condition: dto.condition,
+          note: dto.note,
+          photoUrl: dto.photoUrl,
+          reporterId: userId,
+        },
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          groupId,
+          batchId: dto.batchId,
+          assetId: dto.assetId,
+          type: InventoryMovementType.CONDITION_CHANGE,
+          quantity: dto.quantity ?? 1,
+          actorId: userId,
+          details: {
+            reportId: report.id,
+            condition: dto.condition,
+            note: dto.note ?? null,
+          },
+        },
+      });
+      return report;
+    });
+  }
+
+  async correctBatch(
+    groupId: string,
+    batchId: string,
+    userId: string,
+    dto: CorrectBatchQuantityDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const batch = await tx.inventoryBatch.findUnique({
+        where: { id: batchId },
+        include: {
+          inventoryItem: true,
+          reservations: { where: { status: InventoryReservationStatus.ACTIVE } },
+          custodies: { where: { returnedAt: null } },
+        },
+      });
+      if (!batch || batch.inventoryItem.groupId !== groupId) this.stockNotFound();
+      const unavailable =
+        batch!.reservations.reduce((sum, item) => sum + item.quantity, 0) +
+        batch!.custodies.reduce((sum, item) => sum + item.quantity, 0);
+      if (dto.quantity < unavailable) {
+        throw new ConflictException({
+          code: AppErrorCode.VALIDATION_ERROR,
+          message: 'Corrected quantity cannot be below reserved or checked-out stock',
+        });
+      }
+      const updated = await tx.inventoryBatch.update({
+        where: { id: batchId },
+        data: {
+          quantity: dto.quantity,
+          availableQuantity: USABLE.includes(batch!.condition)
+            ? dto.quantity - unavailable
+            : 0,
+        },
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          groupId,
+          batchId,
+          type: InventoryMovementType.CORRECTION,
+          quantity: dto.quantity - batch!.quantity,
+          actorId: userId,
+          details: {
+            previousQuantity: batch!.quantity,
+            newQuantity: dto.quantity,
+            reason: dto.reason,
+          },
+        },
+      });
+      return updated;
+    });
+  }
+
   private assertSingleTarget(batchId?: string, assetId?: string) {
     if (Boolean(batchId) === Boolean(assetId)) {
       throw new BadRequestException({
@@ -410,6 +535,13 @@ export class InventoryOperationsService {
     throw new ConflictException({
       code: AppErrorCode.CONCURRENT_MODIFICATION,
       message: 'Inventory is unavailable or already reserved',
+    });
+  }
+
+  private stockNotFound(): never {
+    throw new NotFoundException({
+      code: AppErrorCode.NOT_FOUND,
+      message: 'Inventory stock not found',
     });
   }
 

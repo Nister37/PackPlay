@@ -14,6 +14,8 @@ export {
   ReserveInventoryDto,
   ReturnInventoryDto,
   TransferCustodyDto,
+  ReportInventoryConditionDto,
+  CorrectBatchQuantityDto,
 } from './operations.dto';
 export {
   GenerateInventoryQrDto,
