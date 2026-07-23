@@ -25,6 +25,21 @@ export interface GroupReadiness {
   coveredSharedItems: number;
   groupPercentage: number;
   memberReadiness: MemberReadiness[];
+  risks: ReadinessRisk[];
+}
+
+export interface ReadinessRisk {
+  type:
+    | 'UNCOVERED_MANDATORY_ITEM'
+    | 'MISSING_QUANTITY'
+    | 'ABSENT_RESPONSIBLE_MEMBER'
+    | 'UNSTAFFED_ROLE';
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  message: string;
+  itemId?: string;
+  memberId?: string;
+  missingQuantity?: number;
+  actionUrl: string;
 }
 
 @Injectable()
@@ -113,6 +128,8 @@ export class ReadinessService {
             },
           },
         },
+        eventMembers: true,
+        roles: { include: { assignments: true } },
       },
     });
 
@@ -198,12 +215,82 @@ export class ReadinessService {
       };
     });
 
+    const attendanceByUser = new Map(
+      (activity.eventMembers ?? []).map((member) => [member.userId, member.attendanceStatus]),
+    );
+    const deadlinePassed = Boolean(
+      activity.responsibilityDeadline &&
+        activity.responsibilityDeadline.getTime() < Date.now(),
+    );
+    const risks: ReadinessRisk[] = [];
+
+    for (const item of activity.sharedItems) {
+      const activeResponsibilities = item.responsibilities.filter(
+        (responsibility) =>
+          responsibility.status === SharedResponsibilityStatus.COMMITTED ||
+          responsibility.status === SharedResponsibilityStatus.PACKED,
+      );
+      const committed = activeResponsibilities.reduce(
+        (sum, responsibility) => sum + responsibility.committedQuantity,
+        0,
+      );
+      const missingQuantity = Math.max(0, item.requiredQuantity - committed);
+      if (item.isMandatory && missingQuantity > 0) {
+        risks.push({
+          type:
+            committed === 0
+              ? 'UNCOVERED_MANDATORY_ITEM'
+              : 'MISSING_QUANTITY',
+          severity: deadlinePassed ? 'CRITICAL' : committed === 0 ? 'HIGH' : 'MEDIUM',
+          message:
+            committed === 0
+              ? `${item.name} has no responsible member`
+              : `${item.name} is short by ${missingQuantity}`,
+          itemId: item.id,
+          missingQuantity,
+          actionUrl: `/groups/${activity.groupId}/equipment/${item.id}`,
+        });
+      }
+
+      for (const responsibility of activeResponsibilities) {
+        if (attendanceByUser.get(responsibility.userId) === 'NOT_ATTENDING') {
+          risks.push({
+            type: 'ABSENT_RESPONSIBLE_MEMBER',
+            severity: deadlinePassed ? 'CRITICAL' : 'HIGH',
+            message: `An absent member is responsible for ${item.name}`,
+            itemId: item.id,
+            memberId: responsibility.userId,
+            actionUrl: `/groups/${activity.groupId}/equipment/${item.id}`,
+          });
+        }
+      }
+    }
+
+    for (const role of activity.roles ?? []) {
+      const attendingAssignments = role.assignments.filter(
+        (assignment) =>
+          attendanceByUser.get(assignment.userId) !== 'NOT_ATTENDING',
+      );
+      if (role.assignments.length === 0 || attendingAssignments.length === 0) {
+        risks.push({
+          type: 'UNSTAFFED_ROLE',
+          severity: deadlinePassed ? 'HIGH' : 'MEDIUM',
+          message: `${role.name} has no attending member`,
+          actionUrl: `/groups/${activity.groupId}/events/${activity.id}/members`,
+        });
+      }
+    }
+
+    const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2 } as const;
+    risks.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
     const result: GroupReadiness = {
       activityId,
       totalSharedItems,
       coveredSharedItems,
       groupPercentage,
       memberReadiness,
+      risks,
     };
 
     await this.redis.set(cacheKey, result, 30);

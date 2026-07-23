@@ -30,6 +30,12 @@ model User {
   notifications           Notification[]
   outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
   incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
+  recurrenceSeriesCreated EventRecurrenceSeries[] @relation("recurrenceSeriesCreated")
+  eventMemberships       EventMember[]
+  eventRoleAssignments   EventMemberRole[]
+  eventLogEntries        EventActivityLog[]
+  preparationTemplates   PreparationTemplate[] @relation("preparationTemplateCreated")
+  templateVersions       PreparationTemplateVersion[] @relation("templateVersionCreated")
 
   @@map("users")
 }
@@ -171,6 +177,33 @@ enum GroupMemberRole {
   MEMBER
 }
 
+enum GroupActivityStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum EventEnvironment {
+  INDOOR
+  COVERED_OUTDOOR
+  OUTDOOR
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  CUSTOM
+}
+
+enum EventAttendanceStatus {
+  UNKNOWN
+  ATTENDING
+  NOT_ATTENDING
+  TENTATIVE
+}
+
 model Group {
   id          String   @id @default(uuid())
   name        String   @db.VarChar(100)
@@ -183,6 +216,8 @@ model Group {
   invitations   GroupInvitation[]
   activities    GroupActivity[]
   notifications Notification[]
+  recurrenceSeries EventRecurrenceSeries[]
+  preparationTemplates PreparationTemplate[]
 
   @@map("groups")
 }
@@ -224,25 +259,163 @@ model GroupInvitation {
 }
 
 model GroupActivity {
-  id             String        @id @default(uuid())
-  groupId        String        @map("group_id")
-  name           String        @db.VarChar(200)
-  sportProfileId String?       @map("sport_profile_id")
-  activityType   ActivityType  @map("activity_type")
-  date           DateTime?
-  createdById    String        @map("created_by_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                     String              @id @default(uuid())
+  groupId                String              @map("group_id")
+  name                   String              @db.VarChar(200)
+  description            String?             @db.Text
+  sportProfileId         String?             @map("sport_profile_id")
+  activityType           ActivityType
+  status                 GroupActivityStatus @default(DRAFT)
+  date                   DateTime?
+  endAt                  DateTime?           @map("end_at")
+  venueName              String?             @map("venue_name") @db.VarChar(200)
+  latitude               Decimal?            @db.Decimal(9, 6)
+  longitude              Decimal?            @db.Decimal(9, 6)
+  environment            EventEnvironment?
+  surface                String?             @db.VarChar(100)
+  responsibilityDeadline DateTime?           @map("responsibility_deadline")
+  archivedAt             DateTime?           @map("archived_at")
+  recurrenceSeriesId     String?             @map("recurrence_series_id")
+  occurrenceIndex        Int?                @map("occurrence_index")
+  createdById            String              @map("created_by_id")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
 
   group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
   sportProfile    SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
   createdBy       User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
   sharedItems     SharedItem[]
   packingSessions PackingSession[]
+  recurrenceSeries EventRecurrenceSeries? @relation(fields: [recurrenceSeriesId], references: [id], onDelete: SetNull)
+  roles            EventRole[]
+  eventMembers     EventMember[]
+  activityLog      EventActivityLog[]
 
   @@index([groupId])
   @@index([groupId, createdAt])
+  @@index([groupId, status, date])
+  @@index([groupId, venueName])
+  @@unique([recurrenceSeriesId, occurrenceIndex])
   @@map("group_activities")
+}
+
+model EventRecurrenceSeries {
+  id          String              @id @default(uuid())
+  groupId     String              @map("group_id")
+  frequency   RecurrenceFrequency
+  interval    Int                 @default(1)
+  daysOfWeek Json?                @map("days_of_week")
+  customRule  Json?               @map("custom_rule")
+  timezone    String              @db.VarChar(100)
+  until       DateTime?
+  count       Int?
+  createdById String              @map("created_by_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User            @relation("recurrenceSeriesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  activities GroupActivity[]
+
+  @@index([groupId])
+  @@map("event_recurrence_series")
+}
+
+model EventRole {
+  id          String   @id @default(uuid())
+  activityId  String   @map("activity_id")
+  name        String   @db.VarChar(100)
+  requirements Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  activity    GroupActivity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  assignments EventMemberRole[]
+
+  @@unique([activityId, name])
+  @@map("event_roles")
+}
+
+model EventMember {
+  id               String                @id @default(uuid())
+  activityId       String                @map("activity_id")
+  userId           String                @map("user_id")
+  attendanceStatus EventAttendanceStatus @default(UNKNOWN) @map("attendance_status")
+  packingAt        DateTime?             @map("packing_at")
+  leavingAt        DateTime?             @map("leaving_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  activity GroupActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@index([userId])
+  @@map("event_members")
+}
+
+model EventMemberRole {
+  id        String   @id @default(uuid())
+  eventRoleId String @map("event_role_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  eventRole EventRole @relation(fields: [eventRoleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventRoleId, userId])
+  @@index([userId])
+  @@map("event_member_roles")
+}
+
+model EventActivityLog {
+  id         String   @id @default(uuid())
+  activityId String   @map("activity_id")
+  actorId    String?  @map("actor_id")
+  action     String   @db.VarChar(100)
+  itemId     String?  @map("item_id")
+  quantity   Int?
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  activity GroupActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  actor    User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([activityId, createdAt])
+  @@index([activityId, actorId])
+  @@index([activityId, itemId])
+  @@map("event_activity_log")
+}
+
+model PreparationTemplate {
+  id          String   @id @default(uuid())
+  groupId     String   @map("group_id")
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("preparationTemplateCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  versions  PreparationTemplateVersion[]
+
+  @@index([groupId, updatedAt])
+  @@map("preparation_templates")
+}
+
+model PreparationTemplateVersion {
+  id          String   @id @default(uuid())
+  templateId  String   @map("template_id")
+  version     Int
+  snapshot    Json
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  template  PreparationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdBy User                @relation("templateVersionCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@map("preparation_template_versions")
 }
 
 model SharedItem {
