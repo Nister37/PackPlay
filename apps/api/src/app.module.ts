@@ -21,6 +21,7 @@ import { EventPlanningModule } from './event-planning/event-planning.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
 import { WeatherModule } from './weather/weather.module';
+import { CalendarImportsModule } from './calendar-imports/calendar-imports.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { WeatherModule } from './weather/weather.module';
     InventoryModule,
     EquipmentCatalogueModule,
     WeatherModule,
+    CalendarImportsModule,
   ],
   providers: [
     {
