@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   GroupActivityStatus,
@@ -28,6 +29,7 @@ import {
 } from './dto/responsibility.dto';
 import { calculateCoverage } from './coverage.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventActivityLogService } from '../event-planning/event-activity-log.service';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -35,6 +37,7 @@ export class SharedEquipmentService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly eventLog?: EventActivityLogService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -387,6 +390,7 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(activityId, userId, 'RESPONSIBILITY_CLAIMED', itemId, quantity);
     return result;
   }
 
@@ -422,11 +426,19 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_RELEASED',
+      itemId,
+      result.committedQuantity,
+    );
     return result;
   }
 
   async packResponsibility(itemId: string, userId: string, dto: PackResponsibilityDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const activityId = await this.getActivityIdForItem(itemId);
+    const result = await this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
       });
@@ -451,6 +463,14 @@ export class SharedEquipmentService {
         },
       });
     });
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_PACKED',
+      itemId,
+      result.packedQuantity,
+    );
+    return result;
   }
 
   async addExtra(itemId: string, userId: string, dto: ExtraResponsibilityDto) {
@@ -539,6 +559,14 @@ export class SharedEquipmentService {
               reason: dto.reason,
             },
           })),
+      );
+      await this.recordEventAction(
+        item.groupActivityId,
+        userId,
+        'RESPONSIBILITY_MISSING',
+        itemId,
+        result.committedQuantity,
+        { reason: dto.reason },
       );
     }
 
@@ -639,6 +667,13 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_TAKEN_OVER',
+      itemId,
+      quantity,
+    );
     return result;
   }
 
@@ -913,5 +948,24 @@ export class SharedEquipmentService {
     }
 
     return item;
+  }
+
+  private async recordEventAction(
+    activityId: string | null,
+    actorId: string,
+    action: string,
+    itemId: string,
+    quantity?: number,
+    details?: Prisma.InputJsonValue,
+  ): Promise<void> {
+    if (!activityId || !this.eventLog) return;
+    await this.eventLog.record({
+      activityId,
+      actorId,
+      action,
+      itemId,
+      quantity,
+      details,
+    });
   }
 }

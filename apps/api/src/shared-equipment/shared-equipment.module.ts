@@ -5,9 +5,10 @@ import { ResponsibilitiesController } from './responsibilities.controller';
 import { SharedEquipmentService } from './shared-equipment.service';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EventPlanningModule } from '../event-planning/event-planning.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, EventPlanningModule],
   controllers: [
     GroupActivitiesController,
     SharedItemsController,
