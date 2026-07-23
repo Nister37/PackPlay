@@ -17,6 +17,7 @@ import { ReadinessModule } from './readiness/readiness.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
+import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { LoggingInterceptor } from './common/logging.interceptor';
     ReadinessModule,
     NotificationsModule,
     RealtimeModule,
+    EquipmentCatalogueModule,
   ],
   providers: [
     {
