@@ -30,6 +30,7 @@ import {
 import { calculateCoverage } from './coverage.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventActivityLogService } from '../event-planning/event-activity-log.service';
+import { EquipmentCatalogueService } from '../equipment-catalogue/equipment-catalogue.service';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -38,6 +39,7 @@ export class SharedEquipmentService {
     private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
     @Optional() private readonly eventLog?: EventActivityLogService,
+    @Optional() private readonly equipmentCatalogue?: EquipmentCatalogueService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -228,11 +230,18 @@ export class SharedEquipmentService {
         category: dto.category,
         isMandatory: dto.isMandatory ?? true,
         notes: dto.notes,
+        catalogueItemId: dto.catalogueItemId,
         createdById: userId,
       },
     });
 
     await this.invalidateActivityCache(activityId);
+    if (dto.catalogueItemId && this.equipmentCatalogue) {
+      await this.equipmentCatalogue.recordTeamUsage(
+        activity.groupId,
+        dto.catalogueItemId,
+      );
+    }
 
     return item;
   }

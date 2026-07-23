@@ -6,6 +6,7 @@ import {
   IsString,
   Min,
   MaxLength,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateSharedItemDto {
@@ -32,4 +33,8 @@ export class CreateSharedItemDto {
   @IsString()
   @MaxLength(5000)
   notes?: string;
+
+  @IsOptional()
+  @IsUUID()
+  catalogueItemId?: string;
 }

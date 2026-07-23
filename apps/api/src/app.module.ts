@@ -19,6 +19,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
 import { EventPlanningModule } from './event-planning/event-planning.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { InventoryModule } from './inventory/inventory.module';
     RealtimeModule,
     EventPlanningModule,
     InventoryModule,
+    EquipmentCatalogueModule,
   ],
   providers: [
     {
