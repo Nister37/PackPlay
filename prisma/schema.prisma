@@ -15,23 +15,70 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  identity                Identity?
-  sessions                Session[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  groupMemberships        GroupMember[]
-  createdInvitations      GroupInvitation[]
-  sportProfiles           SportProfile[]
-  checklists              Checklist[]
-  createdActivities       GroupActivity[]          @relation("createdActivities")
-  createdSharedItems      SharedItem[]             @relation("createdSharedItems")
-  sharedResponsibilities  SharedResponsibility[]
-  packingSessions         PackingSession[]
-  notifications           Notification[]
+  identity                        Identity?
+  sessions                        Session[]
+  emailVerificationTokens         EmailVerificationToken[]
+  passwordResetTokens             PasswordResetToken[]
+  externalIdentities              ExternalIdentity[]
+  ssoAuthorizations               SsoAuthorization[]
+  groupMemberships                GroupMember[]
+  createdInvitations              GroupInvitation[]
+  sportProfiles                   SportProfile[]
+  checklists                      Checklist[]
+  createdActivities               GroupActivity[]          @relation("createdActivities")
+  createdSharedItems              SharedItem[]             @relation("createdSharedItems")
+  sharedResponsibilities          SharedResponsibility[]
+  packingSessions                 PackingSession[]
+  notifications                   Notification[]
   outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
   incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
 
   @@map("users")
+}
+
+enum SsoProvider {
+  GOOGLE
+}
+
+enum SsoIntent {
+  SIGN_IN
+  LINK
+}
+
+model ExternalIdentity {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  provider  SsoProvider
+  subject   String      @db.VarChar(255)
+  email     String      @db.VarChar(320)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+  @@index([email])
+  @@map("external_identities")
+}
+
+model SsoAuthorization {
+  id                    String      @id @default(uuid())
+  stateHash             String      @unique @map("state_hash") @db.VarChar(64)
+  provider              SsoProvider
+  intent                SsoIntent
+  userId                String?     @map("user_id")
+  encryptedCodeVerifier String      @map("encrypted_code_verifier") @db.Text
+  nonceHash             String      @map("nonce_hash") @db.VarChar(64)
+  returnUrl             String?     @map("return_url") @db.VarChar(2048)
+  expiresAt             DateTime    @map("expires_at")
+  usedAt                DateTime?   @map("used_at")
+  createdAt             DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("sso_authorizations")
 }
 
 model Identity {
@@ -100,14 +147,14 @@ enum ActivityType {
 }
 
 model SportProfile {
-  id            String       @id @default(uuid())
-  userId        String       @map("user_id")
-  name          String       @db.VarChar(100)
-  activityTypes Json         @map("activity_types")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String   @db.VarChar(100)
+  activityTypes Json     @map("activity_types")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   checklists Checklist[]
   activities GroupActivity[]
 
@@ -125,8 +172,8 @@ model Checklist {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sportProfile    SportProfile   @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sportProfile    SportProfile     @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
   items           EquipmentItem[]
   packingSessions PackingSession[]
 
@@ -224,19 +271,19 @@ model GroupInvitation {
 }
 
 model GroupActivity {
-  id             String        @id @default(uuid())
-  groupId        String        @map("group_id")
-  name           String        @db.VarChar(200)
-  sportProfileId String?       @map("sport_profile_id")
-  activityType   ActivityType  @map("activity_type")
+  id             String       @id @default(uuid())
+  groupId        String       @map("group_id")
+  name           String       @db.VarChar(200)
+  sportProfileId String?      @map("sport_profile_id")
+  activityType   ActivityType @map("activity_type")
   date           DateTime?
-  createdById    String        @map("created_by_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdById    String       @map("created_by_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sportProfile    SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
-  createdBy       User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
+  group           Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sportProfile    SportProfile?    @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
+  createdBy       User             @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
   sharedItems     SharedItem[]
   packingSessions PackingSession[]
 
@@ -246,21 +293,21 @@ model GroupActivity {
 }
 
 model SharedItem {
-  id              String   @id @default(uuid())
-  groupActivityId String   @map("group_activity_id")
-  name            String   @db.VarChar(200)
-  requiredQuantity Int     @default(1) @map("required_quantity")
-  category        String?  @db.VarChar(100)
-  isMandatory     Boolean  @default(true) @map("is_mandatory")
-  notes           String?  @db.Text
-  createdById     String   @map("created_by_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  groupActivityId  String   @map("group_activity_id")
+  name             String   @db.VarChar(200)
+  requiredQuantity Int      @default(1) @map("required_quantity")
+  category         String?  @db.VarChar(100)
+  isMandatory      Boolean  @default(true) @map("is_mandatory")
+  notes            String?  @db.Text
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  groupActivity    GroupActivity         @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
-  createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
-  responsibilities SharedResponsibility[]
-  packingDecisions PackingDecision[]
+  groupActivity           GroupActivity            @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
+  createdBy               User                     @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
+  responsibilities        SharedResponsibility[]
+  packingDecisions        PackingDecision[]
   responsibilityTransfers ResponsibilityTransfer[]
 
   @@index([groupActivityId])
@@ -294,15 +341,15 @@ model ResponsibilityTransfer {
 }
 
 model SharedResponsibility {
-  id                String                    @id @default(uuid())
-  sharedItemId      String                    @map("shared_item_id")
-  userId            String                    @map("user_id")
-  committedQuantity Int                       @default(1) @map("committed_quantity")
-  packedQuantity    Int                       @default(0) @map("packed_quantity")
-  extraQuantity     Int                       @default(0) @map("extra_quantity")
+  id                String                     @id @default(uuid())
+  sharedItemId      String                     @map("shared_item_id")
+  userId            String                     @map("user_id")
+  committedQuantity Int                        @default(1) @map("committed_quantity")
+  packedQuantity    Int                        @default(0) @map("packed_quantity")
+  extraQuantity     Int                        @default(0) @map("extra_quantity")
   status            SharedResponsibilityStatus @default(COMMITTED)
-  createdAt         DateTime                  @default(now()) @map("created_at")
-  updatedAt         DateTime                  @updatedAt @map("updated_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
 
   sharedItem SharedItem @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -354,9 +401,9 @@ model PackingSession {
   createdAt       DateTime             @default(now()) @map("created_at")
   updatedAt       DateTime             @updatedAt @map("updated_at")
 
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  groupActivity GroupActivity?  @relation(fields: [groupActivityId], references: [id], onDelete: SetNull)
-  checklist     Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupActivity GroupActivity?    @relation(fields: [groupActivityId], references: [id], onDelete: SetNull)
+  checklist     Checklist         @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   decisions     PackingDecision[]
 
   @@index([userId, status])
@@ -365,14 +412,14 @@ model PackingSession {
 }
 
 model PackingDecision {
-  id               String                @id @default(uuid())
-  packingSessionId String                @map("packing_session_id")
-  equipmentItemId  String?               @map("equipment_item_id")
-  sharedItemId     String?               @map("shared_item_id")
+  id               String                 @id @default(uuid())
+  packingSessionId String                 @map("packing_session_id")
+  equipmentItemId  String?                @map("equipment_item_id")
+  sharedItemId     String?                @map("shared_item_id")
   decision         PackingDecisionType
   reason           PackingDecisionReason?
-  notes            String?               @db.Text
-  decidedAt        DateTime              @default(now()) @map("decided_at")
+  notes            String?                @db.Text
+  decidedAt        DateTime               @default(now()) @map("decided_at")
 
   packingSession PackingSession @relation(fields: [packingSessionId], references: [id], onDelete: Cascade)
   equipmentItem  EquipmentItem? @relation(fields: [equipmentItemId], references: [id], onDelete: SetNull)
