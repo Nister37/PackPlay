@@ -15,3 +15,7 @@ export {
   ReturnInventoryDto,
   TransferCustodyDto,
 } from './operations.dto';
+export {
+  GenerateInventoryQrDto,
+  InventoryHistoryQueryDto,
+} from './history.dto';
