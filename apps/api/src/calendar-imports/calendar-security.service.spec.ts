@@ -27,4 +27,10 @@ describe('CalendarSecurityService', () => {
       BadRequestException,
     );
   });
+
+  it('rejects private HTTPS destinations before making a request', async () => {
+    await expect(service.fetchCalendar('https://127.0.0.1/feed')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
 });

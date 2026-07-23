@@ -76,11 +76,23 @@ export class CalendarSecurityService {
       if (contentLength > 5_000_000) {
         throw new BadRequestException('Calendar feed exceeds the 5 MB limit');
       }
-      const text = await response.text();
-      if (Buffer.byteLength(text, 'utf8') > 5_000_000) {
-        throw new BadRequestException('Calendar feed exceeds the 5 MB limit');
+      if (!response.body) {
+        throw new BadRequestException('Calendar feed returned an empty response');
       }
-      return text;
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        size += chunk.byteLength;
+        if (size > 5_000_000) {
+          await reader.cancel();
+          throw new BadRequestException('Calendar feed exceeds the 5 MB limit');
+        }
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks).toString('utf8');
     }
     throw new BadRequestException('Calendar feed redirect limit exceeded');
   }
@@ -106,7 +118,7 @@ export class CalendarSecurityService {
     }
   }
 
-  private isPrivateAddress(address: string) {
+  private isPrivateAddress(address: string): boolean {
     const version = isIP(address);
     if (version === 4) {
       const [a, b] = address.split('.').map(Number);
@@ -121,7 +133,10 @@ export class CalendarSecurityService {
         a >= 224
       );
     }
-    const normalized = address.toLocaleLowerCase();
+    const normalized = address.toLowerCase();
+    if (normalized.startsWith('::ffff:')) {
+      return this.isPrivateAddress(normalized.slice(7));
+    }
     return (
       normalized === '::1' ||
       normalized === '::' ||
@@ -131,9 +146,8 @@ export class CalendarSecurityService {
       normalized.startsWith('fe9') ||
       normalized.startsWith('fea') ||
       normalized.startsWith('feb') ||
-      normalized.startsWith('::ffff:127.') ||
-      normalized.startsWith('::ffff:10.') ||
-      normalized.startsWith('::ffff:192.168.')
+      normalized.startsWith('ff') ||
+      normalized.startsWith('2001:db8:')
     );
   }
 
