@@ -230,14 +230,14 @@ export class InvitationsService {
   }
 
   async generateQrBuffer(token: string): Promise<Buffer> {
-    const corsOrigin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
-    const url = `${corsOrigin}/invitations/${token}/join`;
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const url = `${frontendUrl}/join/${token}`;
     return QRCode.toBuffer(url, { type: 'png', width: 300 });
   }
 
   private async generateQrDataUrl(token: string): Promise<string> {
-    const corsOrigin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
-    const url = `${corsOrigin}/invitations/${token}/join`;
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const url = `${frontendUrl}/join/${token}`;
     return QRCode.toDataURL(url, { type: 'image/png', width: 300 });
   }
 
