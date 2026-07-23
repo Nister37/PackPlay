@@ -171,6 +171,20 @@ enum GroupMemberRole {
   MEMBER
 }
 
+enum GroupActivityStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum EventEnvironment {
+  INDOOR
+  COVERED_OUTDOOR
+  OUTDOOR
+}
+
 model Group {
   id          String   @id @default(uuid())
   name        String   @db.VarChar(100)
@@ -224,15 +238,25 @@ model GroupInvitation {
 }
 
 model GroupActivity {
-  id             String        @id @default(uuid())
-  groupId        String        @map("group_id")
-  name           String        @db.VarChar(200)
-  sportProfileId String?       @map("sport_profile_id")
-  activityType   ActivityType  @map("activity_type")
-  date           DateTime?
-  createdById    String        @map("created_by_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                     String              @id @default(uuid())
+  groupId                String              @map("group_id")
+  name                   String              @db.VarChar(200)
+  description            String?             @db.Text
+  sportProfileId         String?             @map("sport_profile_id")
+  activityType           ActivityType
+  status                 GroupActivityStatus @default(DRAFT)
+  date                   DateTime?
+  endAt                  DateTime?           @map("end_at")
+  venueName              String?             @map("venue_name") @db.VarChar(200)
+  latitude               Decimal?            @db.Decimal(9, 6)
+  longitude              Decimal?            @db.Decimal(9, 6)
+  environment            EventEnvironment?
+  surface                String?             @db.VarChar(100)
+  responsibilityDeadline DateTime?           @map("responsibility_deadline")
+  archivedAt             DateTime?           @map("archived_at")
+  createdById            String              @map("created_by_id")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
 
   group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
   sportProfile    SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
@@ -242,6 +266,8 @@ model GroupActivity {
 
   @@index([groupId])
   @@index([groupId, createdAt])
+  @@index([groupId, status, date])
+  @@index([groupId, venueName])
   @@map("group_activities")
 }
 
