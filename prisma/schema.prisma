@@ -44,8 +44,55 @@ model User {
   equipmentSuggestionPreference   EquipmentSuggestionPreference?
   reviewedWeatherSuggestions      WeatherSuggestion[]            @relation("weatherSuggestionReviewer")
   createdCalendarFeeds            CalendarFeed[]                 @relation("calendarFeedCreated")
+  externalIdentities              ExternalIdentity[]
+  ssoAuthorizations               SsoAuthorization[]
 
   @@map("users")
+}
+
+enum SsoProvider {
+  GOOGLE
+}
+
+enum SsoIntent {
+  SIGN_IN
+  LINK
+}
+
+model ExternalIdentity {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  provider  SsoProvider
+  subject   String      @db.VarChar(255)
+  email     String      @db.VarChar(320)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+  @@index([email])
+  @@map("external_identities")
+}
+
+model SsoAuthorization {
+  id                    String      @id @default(uuid())
+  stateHash             String      @unique @map("state_hash") @db.VarChar(64)
+  provider              SsoProvider
+  intent                SsoIntent
+  userId                String?     @map("user_id")
+  encryptedCodeVerifier String      @map("encrypted_code_verifier") @db.Text
+  nonceHash             String      @map("nonce_hash") @db.VarChar(64)
+  returnUrl             String?     @map("return_url") @db.VarChar(2048)
+  expiresAt             DateTime    @map("expires_at")
+  usedAt                DateTime?   @map("used_at")
+  createdAt             DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("sso_authorizations")
 }
 
 model Identity {
