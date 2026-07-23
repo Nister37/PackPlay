@@ -152,13 +152,23 @@ export class SharedEquipmentService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
+        inventoryReservations: {
+          where: { status: { in: ['ACTIVE', 'FULFILLED'] } },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
 
     const result = items.map((item) => ({
       ...item,
-      coverage: calculateCoverage(item.requiredQuantity, item.responsibilities),
+      coverage: calculateCoverage(
+        item.requiredQuantity,
+        item.responsibilities,
+        item.inventoryReservations.reduce(
+          (sum, reservation) => sum + reservation.quantity,
+          0,
+        ),
+      ),
     }));
 
     await this.redis.set(cacheKey, result, 60);

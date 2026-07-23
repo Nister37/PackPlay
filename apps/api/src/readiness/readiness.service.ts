@@ -102,7 +102,12 @@ export class ReadinessService {
       where: { id: activityId },
       include: {
         sharedItems: {
-          include: { responsibilities: true },
+          include: {
+            responsibilities: true,
+            inventoryReservations: {
+              where: { status: { in: ['ACTIVE', 'FULFILLED'] } },
+            },
+          },
         },
         group: {
           include: {
@@ -134,7 +139,11 @@ export class ReadinessService {
             r.status === SharedResponsibilityStatus.PACKED,
         )
         .reduce((sum, r) => sum + r.committedQuantity, 0);
-      return activeCommitted >= item.requiredQuantity;
+      const inventoryReserved = (item.inventoryReservations ?? []).reduce(
+        (sum, reservation) => sum + reservation.quantity,
+        0,
+      );
+      return activeCommitted + inventoryReserved >= item.requiredQuantity;
     }).length;
 
     const groupPercentage =

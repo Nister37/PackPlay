@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   InventoryCondition,
@@ -13,6 +14,7 @@ import {
 } from '@prisma/client';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import {
   CheckoutInventoryDto,
   ReserveInventoryDto,
@@ -27,14 +29,17 @@ const USABLE: InventoryCondition[] = [
 
 @Injectable()
 export class InventoryOperationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redis?: RedisService,
+  ) {}
 
   async reserve(groupId: string, userId: string, dto: ReserveInventoryDto) {
     this.assertSingleTarget(dto.batchId, dto.assetId);
     const quantity = dto.quantity ?? 1;
     await this.assertSharedItem(groupId, dto.sharedItemId);
 
-    return this.prisma.$transaction(
+    const reservation = await this.prisma.$transaction(
       async (tx) => {
         if (dto.batchId) {
           const updated = await tx.inventoryBatch.updateMany({
@@ -85,10 +90,12 @@ export class InventoryOperationsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    await this.invalidateReadiness(dto.sharedItemId);
+    return reservation;
   }
 
   async releaseReservation(groupId: string, reservationId: string, userId: string) {
-    return this.prisma.$transaction(
+    const released = await this.prisma.$transaction(
       async (tx) => {
         const reservation = await tx.inventoryReservation.findUnique({
           where: { id: reservationId },
@@ -138,6 +145,8 @@ export class InventoryOperationsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    await this.invalidateReadiness(released.sharedItemId);
+    return released;
   }
 
   async checkout(groupId: string, userId: string, dto: CheckoutInventoryDto) {
@@ -426,6 +435,18 @@ export class InventoryOperationsService {
         code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
         message: 'Shared item not found',
       });
+    }
+  }
+
+  private async invalidateReadiness(sharedItemId: string) {
+    if (!this.redis) return;
+    const item = await this.prisma.sharedItem.findUnique({
+      where: { id: sharedItemId },
+      select: { groupActivityId: true },
+    });
+    if (item) {
+      await this.redis.del(`readiness:activity:${item.groupActivityId}`);
+      await this.redis.del(`shared-items:activity:${item.groupActivityId}`);
     }
   }
 
