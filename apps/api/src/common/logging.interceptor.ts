@@ -1,10 +1,4 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  Logger,
-  NestInterceptor,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { randomUUID } from 'crypto';
 
@@ -23,7 +17,9 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const requestId = randomUUID();
     const method = request.method;
-    const url = request.url;
+    // Log the route path only. Query strings can contain OAuth codes, reset
+    // tokens, invitation tokens, and other credentials.
+    const url = request.path ?? request.url?.split('?')[0];
     const userId = request.user?.id ?? 'anonymous';
     const start = Date.now();
 
