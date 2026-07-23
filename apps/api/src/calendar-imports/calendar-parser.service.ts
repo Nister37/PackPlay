@@ -72,7 +72,7 @@ export class CalendarParserService {
     const title = this.text(get('SUMMARY')?.value ?? 'Imported event').slice(0, 200);
     const sequence = Number.parseInt(get('SEQUENCE')?.value ?? '0', 10);
     const event = {
-      uid: uid!.slice(0, 500),
+      uid: uid!.slice(0, 255),
       recurrenceId: recurrence ? this.date(recurrence).toISOString() : '',
       title,
       description: this.optionalText(get('DESCRIPTION')?.value),

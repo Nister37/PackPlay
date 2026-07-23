@@ -375,7 +375,7 @@ model GroupActivity {
   name                   String              @db.VarChar(200)
   description            String?             @db.Text
   sportProfileId         String?             @map("sport_profile_id")
-  activityType           ActivityType
+  activityType           ActivityType        @map("activity_type")
   status                 GroupActivityStatus @default(DRAFT)
   date                   DateTime?
   endAt                  DateTime?           @map("end_at")
@@ -560,8 +560,8 @@ model CalendarFeed {
 model CalendarImportedEvent {
   id           String   @id @default(uuid())
   feedId       String   @map("feed_id")
-  externalUid  String   @map("external_uid") @db.VarChar(500)
-  recurrenceId String   @default("") @map("recurrence_id") @db.VarChar(200)
+  externalUid  String   @map("external_uid") @db.VarChar(255)
+  recurrenceId String   @default("") @map("recurrence_id") @db.VarChar(100)
   activityId   String   @unique @map("activity_id")
   sequence     Int      @default(0)
   sourceHash   String   @map("source_hash") @db.VarChar(64)

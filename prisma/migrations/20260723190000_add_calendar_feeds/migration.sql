@@ -23,8 +23,8 @@ CREATE TABLE `calendar_feeds` (
 CREATE TABLE `calendar_imported_events` (
     `id` VARCHAR(191) NOT NULL,
     `feed_id` VARCHAR(191) NOT NULL,
-    `external_uid` VARCHAR(500) NOT NULL,
-    `recurrence_id` VARCHAR(200) NOT NULL DEFAULT '',
+    `external_uid` VARCHAR(255) NOT NULL,
+    `recurrence_id` VARCHAR(100) NOT NULL DEFAULT '',
     `activity_id` VARCHAR(191) NOT NULL,
     `sequence` INTEGER NOT NULL DEFAULT 0,
     `source_hash` VARCHAR(64) NOT NULL,
