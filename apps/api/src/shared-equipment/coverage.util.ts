@@ -20,6 +20,8 @@ export interface ResponsibilityData {
 export interface CoverageResult {
   requiredQuantity: number;
   committedQuantity: number;
+  personalCommittedQuantity: number;
+  inventoryReservedQuantity: number;
   packedQuantity: number;
   extraQuantity: number;
   uncoveredQuantity: number;
@@ -29,6 +31,7 @@ export interface CoverageResult {
 export function calculateCoverage(
   requiredQuantity: number,
   responsibilities: ResponsibilityData[],
+  inventoryReservedQuantity = 0,
 ): CoverageResult {
   const activeStatuses: SharedResponsibilityStatus[] = [
     SharedResponsibilityStatus.COMMITTED,
@@ -39,10 +42,12 @@ export function calculateCoverage(
     activeStatuses.includes(r.status),
   );
 
-  const committedQuantity = activeResponsibilities.reduce(
+  const personalCommittedQuantity = activeResponsibilities.reduce(
     (sum, r) => sum + r.committedQuantity,
     0,
   );
+  const committedQuantity =
+    personalCommittedQuantity + inventoryReservedQuantity;
 
   const packedQuantity = responsibilities
     .filter((r) => r.status === SharedResponsibilityStatus.PACKED)
@@ -68,7 +73,7 @@ export function calculateCoverage(
     status = CoverageStatus.REPLACEMENT_FOUND;
   } else if (hasMissing) {
     status = CoverageStatus.REPLACEMENT_PENDING;
-  } else if (responsibilities.length === 0) {
+  } else if (responsibilities.length === 0 && inventoryReservedQuantity === 0) {
     status = CoverageStatus.UNASSIGNED;
   } else if (packedQuantity >= requiredQuantity) {
     status = CoverageStatus.PACKED;
@@ -81,6 +86,8 @@ export function calculateCoverage(
   return {
     requiredQuantity,
     committedQuantity,
+    personalCommittedQuantity,
+    inventoryReservedQuantity,
     packedQuantity,
     extraQuantity,
     uncoveredQuantity,

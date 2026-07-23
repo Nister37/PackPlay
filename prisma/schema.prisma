@@ -15,27 +15,32 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  identity                Identity?
-  sessions                Session[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  groupMemberships        GroupMember[]
-  createdInvitations      GroupInvitation[]
-  sportProfiles           SportProfile[]
-  checklists              Checklist[]
-  createdActivities       GroupActivity[]          @relation("createdActivities")
-  createdSharedItems      SharedItem[]             @relation("createdSharedItems")
-  sharedResponsibilities  SharedResponsibility[]
-  packingSessions         PackingSession[]
-  notifications           Notification[]
-  outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
-  incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
-  recurrenceSeriesCreated EventRecurrenceSeries[] @relation("recurrenceSeriesCreated")
-  eventMemberships       EventMember[]
-  eventRoleAssignments   EventMemberRole[]
-  eventLogEntries        EventActivityLog[]
-  preparationTemplates   PreparationTemplate[] @relation("preparationTemplateCreated")
-  templateVersions       PreparationTemplateVersion[] @relation("templateVersionCreated")
+  identity                        Identity?
+  sessions                        Session[]
+  emailVerificationTokens         EmailVerificationToken[]
+  passwordResetTokens             PasswordResetToken[]
+  groupMemberships                GroupMember[]
+  createdInvitations              GroupInvitation[]
+  sportProfiles                   SportProfile[]
+  checklists                      Checklist[]
+  createdActivities               GroupActivity[]              @relation("createdActivities")
+  createdSharedItems              SharedItem[]                 @relation("createdSharedItems")
+  sharedResponsibilities          SharedResponsibility[]
+  packingSessions                 PackingSession[]
+  notifications                   Notification[]
+  outgoingResponsibilityTransfers ResponsibilityTransfer[]     @relation("transferFrom")
+  incomingResponsibilityTransfers ResponsibilityTransfer[]     @relation("transferTo")
+  recurrenceSeriesCreated         EventRecurrenceSeries[]      @relation("recurrenceSeriesCreated")
+  eventMemberships                EventMember[]
+  eventRoleAssignments            EventMemberRole[]
+  eventLogEntries                 EventActivityLog[]
+  preparationTemplates            PreparationTemplate[]        @relation("preparationTemplateCreated")
+  templateVersions                PreparationTemplateVersion[] @relation("templateVersionCreated")
+  heldInventoryBatches            InventoryBatch[]             @relation("batchHolder")
+  heldInventoryAssets             InventoryAsset[]             @relation("assetHolder")
+  inventoryMovements              InventoryMovement[]          @relation("movementActor")
+  inventoryDamageReports          InventoryDamageReport[]      @relation("damageReporter")
+  inventoryCustodies              InventoryCustody[]           @relation("custodyHolder")
 
   @@map("users")
 }
@@ -106,14 +111,14 @@ enum ActivityType {
 }
 
 model SportProfile {
-  id            String       @id @default(uuid())
-  userId        String       @map("user_id")
-  name          String       @db.VarChar(100)
-  activityTypes Json         @map("activity_types")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String   @db.VarChar(100)
+  activityTypes Json     @map("activity_types")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   checklists Checklist[]
   activities GroupActivity[]
 
@@ -131,8 +136,8 @@ model Checklist {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sportProfile    SportProfile   @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sportProfile    SportProfile     @relation(fields: [sportProfileId], references: [id], onDelete: Cascade)
   items           EquipmentItem[]
   packingSessions PackingSession[]
 
@@ -204,6 +209,36 @@ enum EventAttendanceStatus {
   TENTATIVE
 }
 
+enum InventoryTrackingType {
+  BATCH
+  ASSET
+}
+
+enum InventoryCondition {
+  GOOD
+  NEEDS_ATTENTION
+  DAMAGED
+  INCOMPLETE
+  RETIRED
+}
+
+enum InventoryMovementType {
+  RESERVATION
+  RESERVATION_RELEASE
+  CHECKOUT
+  TRANSFER
+  RETURN
+  CORRECTION
+  CONDITION_CHANGE
+}
+
+enum InventoryReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  CANCELLED
+}
+
 model Group {
   id          String   @id @default(uuid())
   name        String   @db.VarChar(100)
@@ -212,12 +247,15 @@ model Group {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  members       GroupMember[]
-  invitations   GroupInvitation[]
-  activities    GroupActivity[]
-  notifications Notification[]
-  recurrenceSeries EventRecurrenceSeries[]
+  members              GroupMember[]
+  invitations          GroupInvitation[]
+  activities           GroupActivity[]
+  notifications        Notification[]
+  recurrenceSeries     EventRecurrenceSeries[]
   preparationTemplates PreparationTemplate[]
+  inventoryItems       InventoryItem[]
+  storageLocations     InventoryStorageLocation[]
+  inventoryMovements   InventoryMovement[]
 
   @@map("groups")
 }
@@ -281,21 +319,23 @@ model GroupActivity {
   createdAt              DateTime            @default(now()) @map("created_at")
   updatedAt              DateTime            @updatedAt @map("updated_at")
 
-  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sportProfile    SportProfile? @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
-  createdBy       User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
-  sharedItems     SharedItem[]
-  packingSessions PackingSession[]
-  recurrenceSeries EventRecurrenceSeries? @relation(fields: [recurrenceSeriesId], references: [id], onDelete: SetNull)
-  roles            EventRole[]
-  eventMembers     EventMember[]
-  activityLog      EventActivityLog[]
+  group              Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sportProfile       SportProfile?          @relation(fields: [sportProfileId], references: [id], onDelete: SetNull)
+  createdBy          User                   @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
+  sharedItems        SharedItem[]
+  packingSessions    PackingSession[]
+  recurrenceSeries   EventRecurrenceSeries? @relation(fields: [recurrenceSeriesId], references: [id], onDelete: SetNull)
+  roles              EventRole[]
+  eventMembers       EventMember[]
+  activityLog        EventActivityLog[]
+  inventoryMovements InventoryMovement[]
+  inventoryCustodies InventoryCustody[]
 
+  @@unique([recurrenceSeriesId, occurrenceIndex])
   @@index([groupId])
   @@index([groupId, createdAt])
   @@index([groupId, status, date])
   @@index([groupId, venueName])
-  @@unique([recurrenceSeriesId, occurrenceIndex])
   @@map("group_activities")
 }
 
@@ -304,7 +344,7 @@ model EventRecurrenceSeries {
   groupId     String              @map("group_id")
   frequency   RecurrenceFrequency
   interval    Int                 @default(1)
-  daysOfWeek Json?                @map("days_of_week")
+  daysOfWeek  Json?               @map("days_of_week")
   customRule  Json?               @map("custom_rule")
   timezone    String              @db.VarChar(100)
   until       DateTime?
@@ -313,8 +353,8 @@ model EventRecurrenceSeries {
   createdAt   DateTime            @default(now()) @map("created_at")
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
-  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdBy User            @relation("recurrenceSeriesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  group      Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation("recurrenceSeriesCreated", fields: [createdById], references: [id], onDelete: Cascade)
   activities GroupActivity[]
 
   @@index([groupId])
@@ -322,13 +362,13 @@ model EventRecurrenceSeries {
 }
 
 model EventRole {
-  id          String   @id @default(uuid())
-  activityId  String   @map("activity_id")
-  name        String   @db.VarChar(100)
+  id           String   @id @default(uuid())
+  activityId   String   @map("activity_id")
+  name         String   @db.VarChar(100)
   requirements Json?
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  activity    GroupActivity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activity    GroupActivity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
   assignments EventMemberRole[]
 
   @@unique([activityId, name])
@@ -354,10 +394,10 @@ model EventMember {
 }
 
 model EventMemberRole {
-  id        String   @id @default(uuid())
-  eventRoleId String @map("event_role_id")
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  eventRoleId String   @map("event_role_id")
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   eventRole EventRole @relation(fields: [eventRoleId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -395,8 +435,8 @@ model PreparationTemplate {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdBy User    @relation("preparationTemplateCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  group     Group                        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User                         @relation("preparationTemplateCreated", fields: [createdById], references: [id], onDelete: Cascade)
   versions  PreparationTemplateVersion[]
 
   @@index([groupId, updatedAt])
@@ -419,25 +459,207 @@ model PreparationTemplateVersion {
 }
 
 model SharedItem {
-  id              String   @id @default(uuid())
-  groupActivityId String   @map("group_activity_id")
-  name            String   @db.VarChar(200)
-  requiredQuantity Int     @default(1) @map("required_quantity")
-  category        String?  @db.VarChar(100)
-  isMandatory     Boolean  @default(true) @map("is_mandatory")
-  notes           String?  @db.Text
-  createdById     String   @map("created_by_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  groupActivityId  String   @map("group_activity_id")
+  name             String   @db.VarChar(200)
+  requiredQuantity Int      @default(1) @map("required_quantity")
+  category         String?  @db.VarChar(100)
+  isMandatory      Boolean  @default(true) @map("is_mandatory")
+  notes            String?  @db.Text
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  groupActivity    GroupActivity         @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
-  createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
-  responsibilities SharedResponsibility[]
-  packingDecisions PackingDecision[]
+  groupActivity           GroupActivity            @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
+  createdBy               User                     @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
+  responsibilities        SharedResponsibility[]
+  packingDecisions        PackingDecision[]
   responsibilityTransfers ResponsibilityTransfer[]
+  inventoryReservations   InventoryReservation[]
 
   @@index([groupActivityId])
   @@map("shared_items")
+}
+
+model InventoryItem {
+  id           String                @id @default(uuid())
+  groupId      String                @map("group_id")
+  name         String                @db.VarChar(200)
+  description  String?               @db.Text
+  category     String?               @db.VarChar(100)
+  unit         String                @default("piece") @db.VarChar(50)
+  trackingType InventoryTrackingType @map("tracking_type")
+  archivedAt   DateTime?             @map("archived_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batches InventoryBatch[]
+  assets  InventoryAsset[]
+
+  @@index([groupId, archivedAt])
+  @@index([groupId, name])
+  @@map("inventory_items")
+}
+
+model InventoryStorageLocation {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  name      String   @db.VarChar(200)
+  details   String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batches InventoryBatch[]
+  assets  InventoryAsset[]
+
+  @@unique([groupId, name])
+  @@map("inventory_storage_locations")
+}
+
+model InventoryBatch {
+  id                String             @id @default(uuid())
+  inventoryItemId   String             @map("inventory_item_id")
+  quantity          Int
+  availableQuantity Int                @map("available_quantity")
+  condition         InventoryCondition @default(GOOD)
+  locationId        String?            @map("location_id")
+  holderId          String?            @map("holder_id")
+  qrTokenHash       String?            @unique @map("qr_token_hash")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  inventoryItem InventoryItem             @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  location      InventoryStorageLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  holder        User?                     @relation("batchHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  reservations  InventoryReservation[]
+  movements     InventoryMovement[]
+  damageReports InventoryDamageReport[]
+  custodies     InventoryCustody[]
+
+  @@index([inventoryItemId])
+  @@index([locationId])
+  @@index([holderId])
+  @@map("inventory_batches")
+}
+
+model InventoryAsset {
+  id              String             @id @default(uuid())
+  inventoryItemId String             @map("inventory_item_id")
+  assetTag        String             @map("asset_tag") @db.VarChar(100)
+  serialNumber    String?            @map("serial_number") @db.VarChar(200)
+  condition       InventoryCondition @default(GOOD)
+  locationId      String?            @map("location_id")
+  holderId        String?            @map("holder_id")
+  qrTokenHash     String?            @unique @map("qr_token_hash")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  inventoryItem InventoryItem             @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  location      InventoryStorageLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  holder        User?                     @relation("assetHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  reservations  InventoryReservation[]
+  movements     InventoryMovement[]
+  damageReports InventoryDamageReport[]
+  custodies     InventoryCustody[]
+
+  @@unique([inventoryItemId, assetTag])
+  @@index([locationId])
+  @@index([holderId])
+  @@map("inventory_assets")
+}
+
+model InventoryReservation {
+  id           String                     @id @default(uuid())
+  sharedItemId String                     @map("shared_item_id")
+  batchId      String?                    @map("batch_id")
+  assetId      String?                    @map("asset_id")
+  quantity     Int                        @default(1)
+  status       InventoryReservationStatus @default(ACTIVE)
+  createdAt    DateTime                   @default(now()) @map("created_at")
+  releasedAt   DateTime?                  @map("released_at")
+
+  sharedItem SharedItem      @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
+  batch      InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset      InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([sharedItemId, status])
+  @@index([batchId, status])
+  @@index([assetId, status])
+  @@map("inventory_reservations")
+}
+
+model InventoryMovement {
+  id             String                @id @default(uuid())
+  groupId        String                @map("group_id")
+  batchId        String?               @map("batch_id")
+  assetId        String?               @map("asset_id")
+  type           InventoryMovementType
+  quantity       Int                   @default(1)
+  fromLocationId String?               @map("from_location_id")
+  toLocationId   String?               @map("to_location_id")
+  fromHolderId   String?               @map("from_holder_id")
+  toHolderId     String?               @map("to_holder_id")
+  activityId     String?               @map("activity_id")
+  actorId        String                @map("actor_id")
+  details        Json?
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  group    Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batch    InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  asset    InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  activity GroupActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  actor    User            @relation("movementActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([groupId, createdAt])
+  @@index([batchId, createdAt])
+  @@index([assetId, createdAt])
+  @@index([activityId, createdAt])
+  @@map("inventory_movements")
+}
+
+model InventoryDamageReport {
+  id         String             @id @default(uuid())
+  batchId    String?            @map("batch_id")
+  assetId    String?            @map("asset_id")
+  condition  InventoryCondition
+  note       String?            @db.Text
+  photoUrl   String?            @map("photo_url") @db.VarChar(2048)
+  reporterId String             @map("reporter_id")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  batch    InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset    InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reporter User            @relation("damageReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+
+  @@index([batchId, createdAt])
+  @@index([assetId, createdAt])
+  @@map("inventory_damage_reports")
+}
+
+model InventoryCustody {
+  id           String    @id @default(uuid())
+  batchId      String?   @map("batch_id")
+  assetId      String?   @map("asset_id")
+  holderId     String    @map("holder_id")
+  activityId   String?   @map("activity_id")
+  quantity     Int       @default(1)
+  purpose      String?   @db.VarChar(500)
+  checkedOutAt DateTime  @default(now()) @map("checked_out_at")
+  dueAt        DateTime? @map("due_at")
+  returnedAt   DateTime? @map("returned_at")
+
+  batch    InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset    InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  holder   User            @relation("custodyHolder", fields: [holderId], references: [id], onDelete: Restrict)
+  activity GroupActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, returnedAt])
+  @@index([assetId, returnedAt])
+  @@index([holderId, returnedAt])
+  @@index([activityId])
+  @@map("inventory_custodies")
 }
 
 enum ResponsibilityTransferStatus {
@@ -467,15 +689,15 @@ model ResponsibilityTransfer {
 }
 
 model SharedResponsibility {
-  id                String                    @id @default(uuid())
-  sharedItemId      String                    @map("shared_item_id")
-  userId            String                    @map("user_id")
-  committedQuantity Int                       @default(1) @map("committed_quantity")
-  packedQuantity    Int                       @default(0) @map("packed_quantity")
-  extraQuantity     Int                       @default(0) @map("extra_quantity")
+  id                String                     @id @default(uuid())
+  sharedItemId      String                     @map("shared_item_id")
+  userId            String                     @map("user_id")
+  committedQuantity Int                        @default(1) @map("committed_quantity")
+  packedQuantity    Int                        @default(0) @map("packed_quantity")
+  extraQuantity     Int                        @default(0) @map("extra_quantity")
   status            SharedResponsibilityStatus @default(COMMITTED)
-  createdAt         DateTime                  @default(now()) @map("created_at")
-  updatedAt         DateTime                  @updatedAt @map("updated_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
 
   sharedItem SharedItem @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -527,9 +749,9 @@ model PackingSession {
   createdAt       DateTime             @default(now()) @map("created_at")
   updatedAt       DateTime             @updatedAt @map("updated_at")
 
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  groupActivity GroupActivity?  @relation(fields: [groupActivityId], references: [id], onDelete: SetNull)
-  checklist     Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupActivity GroupActivity?    @relation(fields: [groupActivityId], references: [id], onDelete: SetNull)
+  checklist     Checklist         @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   decisions     PackingDecision[]
 
   @@index([userId, status])
@@ -538,14 +760,14 @@ model PackingSession {
 }
 
 model PackingDecision {
-  id               String                @id @default(uuid())
-  packingSessionId String                @map("packing_session_id")
-  equipmentItemId  String?               @map("equipment_item_id")
-  sharedItemId     String?               @map("shared_item_id")
+  id               String                 @id @default(uuid())
+  packingSessionId String                 @map("packing_session_id")
+  equipmentItemId  String?                @map("equipment_item_id")
+  sharedItemId     String?                @map("shared_item_id")
   decision         PackingDecisionType
   reason           PackingDecisionReason?
-  notes            String?               @db.Text
-  decidedAt        DateTime              @default(now()) @map("decided_at")
+  notes            String?                @db.Text
+  decidedAt        DateTime               @default(now()) @map("decided_at")
 
   packingSession PackingSession @relation(fields: [packingSessionId], references: [id], onDelete: Cascade)
   equipmentItem  EquipmentItem? @relation(fields: [equipmentItemId], references: [id], onDelete: SetNull)
