@@ -20,6 +20,7 @@ import { LoggingInterceptor } from './common/logging.interceptor';
 import { EventPlanningModule } from './event-planning/event-planning.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalo
     EventPlanningModule,
     InventoryModule,
     EquipmentCatalogueModule,
+    WeatherModule,
   ],
   providers: [
     {

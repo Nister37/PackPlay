@@ -42,6 +42,7 @@ model User {
   inventoryDamageReports          InventoryDamageReport[]        @relation("damageReporter")
   inventoryCustodies              InventoryCustody[]             @relation("custodyHolder")
   equipmentSuggestionPreference   EquipmentSuggestionPreference?
+  reviewedWeatherSuggestions      WeatherSuggestion[]            @relation("weatherSuggestionReviewer")
 
   @@map("users")
 }
@@ -213,6 +214,17 @@ enum EventAttendanceStatus {
   TENTATIVE
 }
 
+enum WeatherSuggestionStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+}
+
+enum WeatherSuggestionTarget {
+  PERSONAL
+  SHARED
+}
+
 enum InventoryTrackingType {
   BATCH
   ASSET
@@ -251,16 +263,17 @@ model Group {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  members              GroupMember[]
-  invitations          GroupInvitation[]
-  activities           GroupActivity[]
-  notifications        Notification[]
-  recurrenceSeries     EventRecurrenceSeries[]
-  preparationTemplates PreparationTemplate[]
-  inventoryItems       InventoryItem[]
-  storageLocations     InventoryStorageLocation[]
-  inventoryMovements   InventoryMovement[]
-  equipmentUsage       TeamEquipmentUsage[]
+  members                GroupMember[]
+  invitations            GroupInvitation[]
+  activities             GroupActivity[]
+  notifications          Notification[]
+  recurrenceSeries       EventRecurrenceSeries[]
+  preparationTemplates   PreparationTemplate[]
+  inventoryItems         InventoryItem[]
+  storageLocations       InventoryStorageLocation[]
+  inventoryMovements     InventoryMovement[]
+  equipmentUsage         TeamEquipmentUsage[]
+  weatherRulePreferences TeamWeatherRulePreference[]
 
   @@map("groups")
 }
@@ -335,6 +348,8 @@ model GroupActivity {
   activityLog        EventActivityLog[]
   inventoryMovements InventoryMovement[]
   inventoryCustodies InventoryCustody[]
+  weatherSnapshots   WeatherSnapshot[]
+  weatherSuggestions WeatherSuggestion[]
 
   @@unique([recurrenceSeriesId, occurrenceIndex])
   @@index([groupId])
@@ -461,6 +476,65 @@ model PreparationTemplateVersion {
 
   @@unique([templateId, version])
   @@map("preparation_template_versions")
+}
+
+model WeatherSnapshot {
+  id                  String   @id @default(uuid())
+  activityId          String   @map("activity_id")
+  forecastTime        DateTime @map("forecast_time")
+  temperature         Float
+  apparentTemperature Float    @map("apparent_temperature")
+  precipitation       Float
+  windSpeed           Float    @map("wind_speed")
+  uvIndex             Float    @map("uv_index")
+  source              String   @default("Open-Meteo") @db.VarChar(100)
+  fetchedAt           DateTime @default(now()) @map("fetched_at")
+  fingerprint         String   @db.VarChar(64)
+  raw                 Json?
+
+  activity    GroupActivity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  suggestions WeatherSuggestion[]
+
+  @@unique([activityId, fingerprint])
+  @@index([activityId, fetchedAt])
+  @@map("weather_snapshots")
+}
+
+model WeatherSuggestion {
+  id             String                  @id @default(uuid())
+  activityId     String                  @map("activity_id")
+  snapshotId     String                  @map("snapshot_id")
+  ruleKey        String                  @map("rule_key") @db.VarChar(100)
+  itemName       String                  @map("item_name") @db.VarChar(200)
+  reason         String                  @db.VarChar(1000)
+  quantity       Int                     @default(1)
+  target         WeatherSuggestionTarget
+  status         WeatherSuggestionStatus @default(PENDING)
+  reviewedById   String?                 @map("reviewed_by_id")
+  reviewedAt     DateTime?               @map("reviewed_at")
+  acceptedItemId String?                 @map("accepted_item_id")
+  createdAt      DateTime                @default(now()) @map("created_at")
+
+  activity   GroupActivity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  snapshot   WeatherSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  reviewedBy User?           @relation("weatherSuggestionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([activityId, ruleKey, snapshotId])
+  @@index([activityId, status])
+  @@map("weather_suggestions")
+}
+
+model TeamWeatherRulePreference {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  ruleKey   String   @map("rule_key") @db.VarChar(100)
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, ruleKey])
+  @@map("team_weather_rule_preferences")
 }
 
 model SharedItem {
