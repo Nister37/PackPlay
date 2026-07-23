@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
 import { EventPlanningModule } from './event-planning/event-planning.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { EventPlanningModule } from './event-planning/event-planning.module';
     NotificationsModule,
     RealtimeModule,
     EventPlanningModule,
+    WeatherModule,
   ],
   providers: [
     {
