@@ -54,6 +54,29 @@ export class CalendarImportsService {
     return this.getFeed(groupId, feed.id);
   }
 
+  async importFile(groupId: string, userId: string, name: string, content: string) {
+    const events = this.parser.parse(content);
+    const now = new Date();
+    const feed = await this.prisma.calendarFeed.create({
+      data: {
+        groupId,
+        createdById: userId,
+        name,
+        provider: CalendarProvider.GENERIC,
+        encryptedUrl: this.security.encryptUrl('file://local-upload'),
+        urlHash: this.security.urlHash(`${groupId}\0${userId}\0${now.toISOString()}\0${content}`),
+        active: false,
+        lastSyncedAt: now,
+        lastSuccessfulAt: now,
+      },
+    });
+    const result = await this.persist(feed.id, groupId, userId, events);
+    return {
+      feed: await this.getFeed(groupId, feed.id),
+      ...result,
+    };
+  }
+
   listFeeds(groupId: string) {
     return this.prisma.calendarFeed.findMany({
       where: { groupId },

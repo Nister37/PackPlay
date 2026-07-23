@@ -5,7 +5,12 @@ import { JwtAuthGuard } from '../auth/guards';
 import { Roles } from '../groups/decorators';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { CalendarImportsService } from './calendar-imports.service';
-import { ConnectCalendarFeedDto, PreviewCalendarFileDto, PreviewCalendarUrlDto } from './dto';
+import {
+  ConnectCalendarFeedDto,
+  ImportCalendarFileDto,
+  PreviewCalendarFileDto,
+  PreviewCalendarUrlDto,
+} from './dto';
 
 @ApiTags('Calendar imports')
 @ApiBearerAuth()
@@ -28,6 +33,18 @@ export class CalendarImportsController {
   @ApiOperation({ summary: 'Preview uploaded iCalendar content without saving it' })
   previewFile(@Body() dto: PreviewCalendarFileDto) {
     return this.service.preview(dto.content);
+  }
+
+  @Post('import-file')
+  @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
+  @UseGuards(GroupRoleGuard)
+  @ApiOperation({ summary: 'Import events from reviewed iCalendar content' })
+  importFile(
+    @Param('groupId') groupId: string,
+    @Req() request: any,
+    @Body() dto: ImportCalendarFileDto,
+  ) {
+    return this.service.importFile(groupId, request.user.id, dto.name, dto.content);
   }
 
   @Post()

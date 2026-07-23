@@ -28,3 +28,11 @@ export class ConnectCalendarFeedDto extends PreviewCalendarUrlDto {
   @IsEnum(CalendarProvider)
   provider?: CalendarProvider;
 }
+
+export class ImportCalendarFileDto extends PreviewCalendarFileDto {
+  @ApiProperty({ maxLength: 200 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name!: string;
+}
