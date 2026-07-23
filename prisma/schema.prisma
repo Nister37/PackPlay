@@ -30,6 +30,10 @@ model User {
   notifications           Notification[]
   outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
   incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
+  heldInventoryBatches InventoryBatch[] @relation("batchHolder")
+  heldInventoryAssets  InventoryAsset[] @relation("assetHolder")
+  inventoryMovements   InventoryMovement[] @relation("movementActor")
+  inventoryDamageReports InventoryDamageReport[] @relation("damageReporter")
 
   @@map("users")
 }
@@ -171,6 +175,36 @@ enum GroupMemberRole {
   MEMBER
 }
 
+enum InventoryTrackingType {
+  BATCH
+  ASSET
+}
+
+enum InventoryCondition {
+  GOOD
+  NEEDS_ATTENTION
+  DAMAGED
+  INCOMPLETE
+  RETIRED
+}
+
+enum InventoryMovementType {
+  RESERVATION
+  RESERVATION_RELEASE
+  CHECKOUT
+  TRANSFER
+  RETURN
+  CORRECTION
+  CONDITION_CHANGE
+}
+
+enum InventoryReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  CANCELLED
+}
+
 model Group {
   id          String   @id @default(uuid())
   name        String   @db.VarChar(100)
@@ -183,6 +217,9 @@ model Group {
   invitations   GroupInvitation[]
   activities    GroupActivity[]
   notifications Notification[]
+  inventoryItems InventoryItem[]
+  storageLocations InventoryStorageLocation[]
+  inventoryMovements InventoryMovement[]
 
   @@map("groups")
 }
@@ -239,6 +276,7 @@ model GroupActivity {
   createdBy       User          @relation("createdActivities", fields: [createdById], references: [id], onDelete: Cascade)
   sharedItems     SharedItem[]
   packingSessions PackingSession[]
+  inventoryMovements InventoryMovement[]
 
   @@index([groupId])
   @@index([groupId, createdAt])
@@ -262,9 +300,165 @@ model SharedItem {
   responsibilities SharedResponsibility[]
   packingDecisions PackingDecision[]
   responsibilityTransfers ResponsibilityTransfer[]
+  inventoryReservations InventoryReservation[]
 
   @@index([groupActivityId])
   @@map("shared_items")
+}
+
+model InventoryItem {
+  id           String                @id @default(uuid())
+  groupId      String                @map("group_id")
+  name         String                @db.VarChar(200)
+  description  String?               @db.Text
+  category     String?               @db.VarChar(100)
+  unit         String                @default("piece") @db.VarChar(50)
+  trackingType InventoryTrackingType @map("tracking_type")
+  archivedAt   DateTime?             @map("archived_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batches InventoryBatch[]
+  assets  InventoryAsset[]
+
+  @@index([groupId, archivedAt])
+  @@index([groupId, name])
+  @@map("inventory_items")
+}
+
+model InventoryStorageLocation {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  name      String   @db.VarChar(200)
+  details   String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batches InventoryBatch[]
+  assets  InventoryAsset[]
+
+  @@unique([groupId, name])
+  @@map("inventory_storage_locations")
+}
+
+model InventoryBatch {
+  id             String             @id @default(uuid())
+  inventoryItemId String            @map("inventory_item_id")
+  quantity       Int
+  availableQuantity Int             @map("available_quantity")
+  condition      InventoryCondition @default(GOOD)
+  locationId     String?            @map("location_id")
+  holderId       String?            @map("holder_id")
+  qrTokenHash    String?            @unique @map("qr_token_hash")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  inventoryItem InventoryItem              @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  location      InventoryStorageLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  holder        User?                      @relation("batchHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  reservations  InventoryReservation[]
+  movements     InventoryMovement[]
+  damageReports InventoryDamageReport[]
+
+  @@index([inventoryItemId])
+  @@index([locationId])
+  @@index([holderId])
+  @@map("inventory_batches")
+}
+
+model InventoryAsset {
+  id              String             @id @default(uuid())
+  inventoryItemId String             @map("inventory_item_id")
+  assetTag        String             @map("asset_tag") @db.VarChar(100)
+  serialNumber    String?            @map("serial_number") @db.VarChar(200)
+  condition       InventoryCondition @default(GOOD)
+  locationId      String?            @map("location_id")
+  holderId        String?            @map("holder_id")
+  qrTokenHash     String?            @unique @map("qr_token_hash")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  inventoryItem InventoryItem             @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  location      InventoryStorageLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  holder        User?                     @relation("assetHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  reservations  InventoryReservation[]
+  movements     InventoryMovement[]
+  damageReports InventoryDamageReport[]
+
+  @@unique([inventoryItemId, assetTag])
+  @@index([locationId])
+  @@index([holderId])
+  @@map("inventory_assets")
+}
+
+model InventoryReservation {
+  id           String                     @id @default(uuid())
+  sharedItemId String                     @map("shared_item_id")
+  batchId      String?                    @map("batch_id")
+  assetId      String?                    @map("asset_id")
+  quantity     Int                        @default(1)
+  status       InventoryReservationStatus @default(ACTIVE)
+  createdAt    DateTime                   @default(now()) @map("created_at")
+  releasedAt   DateTime?                  @map("released_at")
+
+  sharedItem SharedItem      @relation(fields: [sharedItemId], references: [id], onDelete: Cascade)
+  batch      InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset      InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([sharedItemId, status])
+  @@index([batchId, status])
+  @@index([assetId, status])
+  @@map("inventory_reservations")
+}
+
+model InventoryMovement {
+  id             String                @id @default(uuid())
+  groupId        String                @map("group_id")
+  batchId        String?               @map("batch_id")
+  assetId        String?               @map("asset_id")
+  type           InventoryMovementType
+  quantity       Int                   @default(1)
+  fromLocationId String?               @map("from_location_id")
+  toLocationId   String?               @map("to_location_id")
+  fromHolderId   String?               @map("from_holder_id")
+  toHolderId     String?               @map("to_holder_id")
+  activityId     String?               @map("activity_id")
+  actorId        String                @map("actor_id")
+  details        Json?
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  group    Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  batch    InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  asset    InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  activity GroupActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  actor    User            @relation("movementActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([groupId, createdAt])
+  @@index([batchId, createdAt])
+  @@index([assetId, createdAt])
+  @@index([activityId, createdAt])
+  @@map("inventory_movements")
+}
+
+model InventoryDamageReport {
+  id         String             @id @default(uuid())
+  batchId    String?            @map("batch_id")
+  assetId    String?            @map("asset_id")
+  condition  InventoryCondition
+  note       String?            @db.Text
+  photoUrl   String?            @map("photo_url") @db.VarChar(2048)
+  reporterId String             @map("reporter_id")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  batch    InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset    InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reporter User            @relation("damageReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+
+  @@index([batchId, createdAt])
+  @@index([assetId, createdAt])
+  @@map("inventory_damage_reports")
 }
 
 enum ResponsibilityTransferStatus {
