@@ -6,6 +6,7 @@ import {
   IsBoolean,
   Min,
   MaxLength,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -43,4 +44,9 @@ export class CreateEquipmentItemDto {
   @Min(0)
   @IsOptional()
   sortOrder?: number;
+
+  @ApiPropertyOptional({ description: 'Stable catalogue item identifier', format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  catalogueItemId?: string;
 }

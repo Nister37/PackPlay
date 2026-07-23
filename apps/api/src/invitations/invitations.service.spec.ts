@@ -32,7 +32,7 @@ describe('InvitationsService', () => {
 
     const mockConfigService = {
       get: jest.fn().mockImplementation((key: string) => {
-        if (key === 'CORS_ORIGIN') return 'http://localhost:4200';
+        if (key === 'FRONTEND_URL') return 'http://localhost:4200';
         return undefined;
       }),
     };

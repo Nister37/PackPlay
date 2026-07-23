@@ -3,14 +3,22 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
-import { ResponsibilityTransferStatus, SharedResponsibilityStatus } from '@prisma/client';
+import {
+  GroupActivityStatus,
+  Prisma,
+  ResponsibilityTransferStatus,
+  SharedResponsibilityStatus,
+} from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { AppErrorCode } from '@packplay/common';
 import { CreateGroupActivityDto } from './dto/create-group-activity.dto';
 import { CreateSharedItemDto } from './dto/create-shared-item.dto';
 import { UpdateSharedItemDto } from './dto/update-shared-item.dto';
+import { UpdateGroupActivityDto } from './dto/update-group-activity.dto';
+import { ListGroupActivitiesQueryDto } from './dto/list-group-activities-query.dto';
 import {
   ClaimResponsibilityDto,
   ExtraResponsibilityDto,
@@ -21,6 +29,8 @@ import {
 } from './dto/responsibility.dto';
 import { calculateCoverage } from './coverage.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventActivityLogService } from '../event-planning/event-activity-log.service';
+import { EquipmentCatalogueService } from '../equipment-catalogue/equipment-catalogue.service';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -28,30 +38,128 @@ export class SharedEquipmentService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly eventLog?: EventActivityLogService,
+    @Optional() private readonly equipmentCatalogue?: EquipmentCatalogueService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
 
   async createActivity(groupId: string, userId: string, dto: CreateGroupActivityDto) {
+    this.validateActivityDates(dto);
     return this.prisma.groupActivity.create({
       data: {
         groupId,
         name: dto.name,
+        description: dto.description,
         activityType: dto.activityType,
         sportProfileId: dto.sportProfileId,
+        status: dto.status,
         date: dto.date ? new Date(dto.date) : null,
+        endAt: dto.endAt ? new Date(dto.endAt) : null,
+        venueName: dto.venueName,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        environment: dto.environment,
+        surface: dto.surface,
+        responsibilityDeadline: dto.responsibilityDeadline
+          ? new Date(dto.responsibilityDeadline)
+          : null,
         createdById: userId,
       },
     });
   }
 
-  async listActivities(groupId: string) {
+  async listActivities(groupId: string, query: ListGroupActivitiesQueryDto = {}) {
+    const date: Prisma.DateTimeNullableFilter | undefined =
+      query.from || query.to
+        ? {
+            ...(query.from && { gte: new Date(query.from) }),
+            ...(query.to && { lte: new Date(query.to) }),
+          }
+        : undefined;
+
     return this.prisma.groupActivity.findMany({
-      where: { groupId },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        groupId,
+        ...(query.status
+          ? { status: query.status }
+          : { status: { not: GroupActivityStatus.ARCHIVED } }),
+        ...(date && { date }),
+        ...(query.search && {
+          OR: [
+            { name: { contains: query.search } },
+            { venueName: { contains: query.search } },
+          ],
+        }),
+      },
+      orderBy: [{ date: 'asc' }, { createdAt: 'desc' }],
       include: {
         _count: { select: { sharedItems: true } },
       },
+    });
+  }
+
+  async updateActivity(
+    groupId: string,
+    activityId: string,
+    dto: UpdateGroupActivityDto,
+  ) {
+    const activity = await this.getActivity(groupId, activityId);
+    this.validateActivityDates(dto, activity.date, activity.endAt);
+
+    return this.prisma.groupActivity.update({
+      where: { id: activityId },
+      data: {
+        ...dto,
+        ...(dto.date !== undefined && { date: dto.date ? new Date(dto.date) : null }),
+        ...(dto.endAt !== undefined && {
+          endAt: dto.endAt ? new Date(dto.endAt) : null,
+        }),
+        ...(dto.responsibilityDeadline !== undefined && {
+          responsibilityDeadline: dto.responsibilityDeadline
+            ? new Date(dto.responsibilityDeadline)
+            : null,
+        }),
+      },
+    });
+  }
+
+  async duplicateActivity(groupId: string, activityId: string, userId: string) {
+    const original = await this.getActivity(groupId, activityId);
+    return this.prisma.groupActivity.create({
+      data: {
+        groupId,
+        name: `${original.name} (copy)`,
+        description: original.description,
+        sportProfileId: original.sportProfileId,
+        activityType: original.activityType,
+        status: GroupActivityStatus.DRAFT,
+        venueName: original.venueName,
+        latitude: original.latitude,
+        longitude: original.longitude,
+        environment: original.environment,
+        surface: original.surface,
+        createdById: userId,
+        sharedItems: {
+          create: original.sharedItems.map((item) => ({
+            name: item.name,
+            requiredQuantity: item.requiredQuantity,
+            category: item.category,
+            isMandatory: item.isMandatory,
+            notes: item.notes,
+            createdById: userId,
+          })),
+        },
+      },
+      include: { sharedItems: true },
+    });
+  }
+
+  async archiveActivity(groupId: string, activityId: string) {
+    await this.getActivity(groupId, activityId);
+    return this.prisma.groupActivity.update({
+      where: { id: activityId },
+      data: { status: GroupActivityStatus.ARCHIVED, archivedAt: new Date() },
     });
   }
 
@@ -81,6 +189,34 @@ export class SharedEquipmentService {
     return activity;
   }
 
+  private validateActivityDates(
+    dto: Pick<
+      UpdateGroupActivityDto,
+      'date' | 'endAt' | 'responsibilityDeadline'
+    >,
+    existingStart: Date | null = null,
+    existingEnd: Date | null = null,
+  ): void {
+    const start = dto.date !== undefined ? (dto.date ? new Date(dto.date) : null) : existingStart;
+    const end = dto.endAt !== undefined ? (dto.endAt ? new Date(dto.endAt) : null) : existingEnd;
+    const deadline = dto.responsibilityDeadline
+      ? new Date(dto.responsibilityDeadline)
+      : null;
+
+    if (start && end && end <= start) {
+      throw new BadRequestException({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Event end time must be after its start time',
+      });
+    }
+    if (start && deadline && deadline >= start) {
+      throw new BadRequestException({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Responsibility deadline must be before the event starts',
+      });
+    }
+  }
+
   // ─── Shared Items ─────────────────────────────────────────────────────
 
   async addSharedItem(activityId: string, userId: string, dto: CreateSharedItemDto) {
@@ -94,11 +230,18 @@ export class SharedEquipmentService {
         category: dto.category,
         isMandatory: dto.isMandatory ?? true,
         notes: dto.notes,
+        catalogueItemId: dto.catalogueItemId,
         createdById: userId,
       },
     });
 
     await this.invalidateActivityCache(activityId);
+    if (dto.catalogueItemId && this.equipmentCatalogue) {
+      await this.equipmentCatalogue.recordTeamUsage(
+        activity.groupId,
+        dto.catalogueItemId,
+      );
+    }
 
     return item;
   }
@@ -152,13 +295,23 @@ export class SharedEquipmentService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
+        inventoryReservations: {
+          where: { status: { in: ['ACTIVE', 'FULFILLED'] } },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
 
     const result = items.map((item) => ({
       ...item,
-      coverage: calculateCoverage(item.requiredQuantity, item.responsibilities),
+      coverage: calculateCoverage(
+        item.requiredQuantity,
+        item.responsibilities,
+        item.inventoryReservations.reduce(
+          (sum, reservation) => sum + reservation.quantity,
+          0,
+        ),
+      ),
     }));
 
     await this.redis.set(cacheKey, result, 60);
@@ -256,6 +409,7 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(activityId, userId, 'RESPONSIBILITY_CLAIMED', itemId, quantity);
     return result;
   }
 
@@ -291,11 +445,19 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_RELEASED',
+      itemId,
+      result.committedQuantity,
+    );
     return result;
   }
 
   async packResponsibility(itemId: string, userId: string, dto: PackResponsibilityDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const activityId = await this.getActivityIdForItem(itemId);
+    const result = await this.prisma.$transaction(async (tx) => {
       const responsibility = await tx.sharedResponsibility.findUnique({
         where: { sharedItemId_userId: { sharedItemId: itemId, userId } },
       });
@@ -320,6 +482,14 @@ export class SharedEquipmentService {
         },
       });
     });
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_PACKED',
+      itemId,
+      result.packedQuantity,
+    );
+    return result;
   }
 
   async addExtra(itemId: string, userId: string, dto: ExtraResponsibilityDto) {
@@ -408,6 +578,14 @@ export class SharedEquipmentService {
               reason: dto.reason,
             },
           })),
+      );
+      await this.recordEventAction(
+        item.groupActivityId,
+        userId,
+        'RESPONSIBILITY_MISSING',
+        itemId,
+        result.committedQuantity,
+        { reason: dto.reason },
       );
     }
 
@@ -508,6 +686,13 @@ export class SharedEquipmentService {
     });
 
     if (activityId) await this.invalidateActivityCache(activityId);
+    await this.recordEventAction(
+      activityId,
+      userId,
+      'RESPONSIBILITY_TAKEN_OVER',
+      itemId,
+      quantity,
+    );
     return result;
   }
 
@@ -782,5 +967,24 @@ export class SharedEquipmentService {
     }
 
     return item;
+  }
+
+  private async recordEventAction(
+    activityId: string | null,
+    actorId: string,
+    action: string,
+    itemId: string,
+    quantity?: number,
+    details?: Prisma.InputJsonValue,
+  ): Promise<void> {
+    if (!activityId || !this.eventLog) return;
+    await this.eventLog.record({
+      activityId,
+      actorId,
+      action,
+      itemId,
+      quantity,
+      details,
+    });
   }
 }

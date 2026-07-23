@@ -26,7 +26,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -41,7 +43,9 @@
                       "example": {},
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -60,7 +64,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -94,7 +100,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -114,7 +122,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -137,7 +147,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -153,7 +165,9 @@
           }
         },
         "summary": "Check application health (DB + Redis)",
-        "tags": ["Health"]
+        "tags": [
+          "Health"
+        ]
       }
     },
     "/auth/register": {
@@ -179,7 +193,9 @@
           }
         },
         "summary": "Register a new account",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/verify-email": {
@@ -205,7 +221,9 @@
           }
         },
         "summary": "Verify email with token",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/resend-verification": {
@@ -228,7 +246,9 @@
           }
         },
         "summary": "Resend verification email",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/login": {
@@ -263,7 +283,9 @@
           }
         },
         "summary": "Login with email and password",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/logout": {
@@ -291,7 +313,9 @@
           }
         ],
         "summary": "Logout and revoke session",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/refresh": {
@@ -326,7 +350,9 @@
           }
         },
         "summary": "Refresh access token",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/password-reset/request": {
@@ -349,7 +375,9 @@
           }
         },
         "summary": "Request password reset",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/auth/password-reset/confirm": {
@@ -375,7 +403,144 @@
           }
         },
         "summary": "Set new password with reset token",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/google/start": {
+      "post": {
+        "operationId": "SsoController_start",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSsoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Start Google sign-in with PKCE",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/google/link/start": {
+      "post": {
+        "operationId": "SsoController_startLink",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSsoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start linking Google to the signed-in account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/google/callback": {
+      "get": {
+        "operationId": "SsoController_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Complete Google sign-in or account linking",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/methods": {
+      "get": {
+        "operationId": "SsoController_methods",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List connected sign-in methods",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/{provider}": {
+      "delete": {
+        "operationId": "SsoController_unlink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disconnect an SSO sign-in method",
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/groups": {
@@ -403,7 +568,9 @@
           }
         ],
         "summary": "Create a new group",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       },
       "get": {
         "operationId": "GroupsController_listGroups",
@@ -419,7 +586,9 @@
           }
         ],
         "summary": "List user's groups",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       }
     },
     "/groups/{groupId}": {
@@ -446,7 +615,9 @@
           }
         ],
         "summary": "Get group details (members only)",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       },
       "patch": {
         "operationId": "GroupsController_updateGroup",
@@ -481,7 +652,9 @@
           }
         ],
         "summary": "Update group (OWNER/ADMIN only)",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       },
       "delete": {
         "operationId": "GroupsController_deleteGroup",
@@ -506,7 +679,9 @@
           }
         ],
         "summary": "Delete group (OWNER only)",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       }
     },
     "/groups/{groupId}/members": {
@@ -533,7 +708,9 @@
           }
         ],
         "summary": "List group members",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       }
     },
     "/groups/{groupId}/members/{memberId}": {
@@ -568,7 +745,9 @@
           }
         ],
         "summary": "Remove a member (OWNER/ADMIN)",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       },
       "patch": {
         "operationId": "GroupsController_updateMemberRole",
@@ -611,7 +790,9 @@
           }
         ],
         "summary": "Update member role (OWNER only)",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
       }
     },
     "/groups/{groupId}/leave": {
@@ -638,7 +819,48 @@
           }
         ],
         "summary": "Leave a group",
-        "tags": ["Groups"]
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/groups/{groupId}/transfer-ownership": {
+      "post": {
+        "operationId": "GroupsController_transferOwnership",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transfer group ownership to another member",
+        "tags": [
+          "Groups"
+        ]
       }
     },
     "/groups/{groupId}/invitations": {
@@ -675,7 +897,9 @@
           }
         ],
         "summary": "Create an invitation link (OWNER/ADMIN)",
-        "tags": ["Invitations"]
+        "tags": [
+          "Invitations"
+        ]
       },
       "get": {
         "operationId": "InvitationsController_listInvitations",
@@ -700,7 +924,48 @@
           }
         ],
         "summary": "List active invitations (OWNER/ADMIN)",
-        "tags": ["Invitations"]
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/groups/{groupId}/invitations/regenerate": {
+      "post": {
+        "operationId": "InvitationsController_regenerateInvitation",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke active invitations and create a replacement",
+        "tags": [
+          "Invitations"
+        ]
       }
     },
     "/invitations/{token}/info": {
@@ -721,13 +986,10 @@
             "description": ""
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
         "summary": "Preview invitation info before joining",
-        "tags": ["Invitations"]
+        "tags": [
+          "Invitations"
+        ]
       }
     },
     "/invitations/{token}/join": {
@@ -754,7 +1016,9 @@
           }
         ],
         "summary": "Join a group via invitation token",
-        "tags": ["Invitations"]
+        "tags": [
+          "Invitations"
+        ]
       }
     },
     "/groups/{groupId}/invitations/{invitationId}": {
@@ -789,7 +1053,46 @@
           }
         ],
         "summary": "Revoke an invitation (OWNER/ADMIN)",
-        "tags": ["Invitations"]
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/groups/{groupId}/invitations/{invitationId}/qr": {
+      "get": {
+        "operationId": "InvitationsController_getInvitationQr",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate QR code for an invitation (OWNER/ADMIN)",
+        "tags": [
+          "Invitations"
+        ]
       }
     },
     "/sport-profiles": {
@@ -817,7 +1120,9 @@
           }
         ],
         "summary": "Create a sport profile",
-        "tags": ["Sport Profiles"]
+        "tags": [
+          "Sport Profiles"
+        ]
       },
       "get": {
         "operationId": "SportProfilesController_list",
@@ -833,7 +1138,9 @@
           }
         ],
         "summary": "List user's sport profiles",
-        "tags": ["Sport Profiles"]
+        "tags": [
+          "Sport Profiles"
+        ]
       }
     },
     "/sport-profiles/{profileId}": {
@@ -860,7 +1167,9 @@
           }
         ],
         "summary": "Get sport profile details",
-        "tags": ["Sport Profiles"]
+        "tags": [
+          "Sport Profiles"
+        ]
       },
       "patch": {
         "operationId": "SportProfilesController_update",
@@ -895,7 +1204,9 @@
           }
         ],
         "summary": "Update a sport profile",
-        "tags": ["Sport Profiles"]
+        "tags": [
+          "Sport Profiles"
+        ]
       },
       "delete": {
         "operationId": "SportProfilesController_delete",
@@ -920,7 +1231,9 @@
           }
         ],
         "summary": "Delete a sport profile and its checklists",
-        "tags": ["Sport Profiles"]
+        "tags": [
+          "Sport Profiles"
+        ]
       }
     },
     "/checklists": {
@@ -948,7 +1261,9 @@
           }
         ],
         "summary": "Create a checklist",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       },
       "get": {
         "operationId": "ChecklistsController_list",
@@ -981,7 +1296,9 @@
           }
         ],
         "summary": "List user's checklists",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       }
     },
     "/checklists/{checklistId}": {
@@ -1008,7 +1325,9 @@
           }
         ],
         "summary": "Get checklist with items",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       },
       "patch": {
         "operationId": "ChecklistsController_update",
@@ -1043,7 +1362,9 @@
           }
         ],
         "summary": "Update checklist metadata",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       },
       "delete": {
         "operationId": "ChecklistsController_delete",
@@ -1068,7 +1389,9 @@
           }
         ],
         "summary": "Delete a checklist",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       }
     },
     "/checklists/{checklistId}/duplicate": {
@@ -1095,7 +1418,9 @@
           }
         ],
         "summary": "Duplicate a checklist with all items",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       }
     },
     "/checklists/{checklistId}/save-as-template": {
@@ -1122,7 +1447,9 @@
           }
         ],
         "summary": "Mark a checklist as template",
-        "tags": ["Checklists"]
+        "tags": [
+          "Checklists"
+        ]
       }
     },
     "/checklists/{checklistId}/items": {
@@ -1159,7 +1486,9 @@
           }
         ],
         "summary": "Add item to checklist",
-        "tags": ["Equipment Items"]
+        "tags": [
+          "Equipment Items"
+        ]
       }
     },
     "/checklists/{checklistId}/items/{itemId}": {
@@ -1204,7 +1533,9 @@
           }
         ],
         "summary": "Edit an item",
-        "tags": ["Equipment Items"]
+        "tags": [
+          "Equipment Items"
+        ]
       },
       "delete": {
         "operationId": "EquipmentItemsController_deleteItem",
@@ -1237,7 +1568,9 @@
           }
         ],
         "summary": "Remove an item",
-        "tags": ["Equipment Items"]
+        "tags": [
+          "Equipment Items"
+        ]
       }
     },
     "/checklists/{checklistId}/items/reorder": {
@@ -1274,7 +1607,9 @@
           }
         ],
         "summary": "Reorder items in a checklist",
-        "tags": ["Equipment Items"]
+        "tags": [
+          "Equipment Items"
+        ]
       }
     },
     "/groups/{groupId}/activities": {
@@ -1311,7 +1646,9 @@
           }
         ],
         "summary": "Create a group activity",
-        "tags": ["Group Activities"]
+        "tags": [
+          "Group Activities"
+        ]
       },
       "get": {
         "operationId": "GroupActivitiesController_listActivities",
@@ -1321,6 +1658,48 @@
             "required": true,
             "in": "path",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "CANCELLED",
+                "COMPLETED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive title or venue search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
               "type": "string"
             }
           }
@@ -1336,7 +1715,9 @@
           }
         ],
         "summary": "List group activities",
-        "tags": ["Group Activities"]
+        "tags": [
+          "Group Activities"
+        ]
       }
     },
     "/groups/{groupId}/activities/{activityId}": {
@@ -1371,7 +1752,128 @@
           }
         ],
         "summary": "Get activity with shared items",
-        "tags": ["Group Activities"]
+        "tags": [
+          "Group Activities"
+        ]
+      },
+      "patch": {
+        "operationId": "GroupActivitiesController_updateActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupActivityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update an event and its venue or lifecycle details",
+        "tags": [
+          "Group Activities"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/duplicate": {
+      "post": {
+        "operationId": "GroupActivitiesController_duplicateActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Duplicate an event as a new draft",
+        "tags": [
+          "Group Activities"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/archive": {
+      "post": {
+        "operationId": "GroupActivitiesController_archiveActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archive an event while retaining its history",
+        "tags": [
+          "Group Activities"
+        ]
       }
     },
     "/activities/{activityId}/shared-items": {
@@ -1408,7 +1910,9 @@
           }
         ],
         "summary": "Add a shared item to an activity",
-        "tags": ["Shared Items"]
+        "tags": [
+          "Shared Items"
+        ]
       },
       "get": {
         "operationId": "SharedItemsController_listSharedItems",
@@ -1433,7 +1937,9 @@
           }
         ],
         "summary": "List shared items with coverage status",
-        "tags": ["Shared Items"]
+        "tags": [
+          "Shared Items"
+        ]
       }
     },
     "/activities/{activityId}/shared-items/{itemId}": {
@@ -1478,7 +1984,9 @@
           }
         ],
         "summary": "Update shared item details",
-        "tags": ["Shared Items"]
+        "tags": [
+          "Shared Items"
+        ]
       },
       "delete": {
         "operationId": "SharedItemsController_deleteSharedItem",
@@ -1511,7 +2019,9 @@
           }
         ],
         "summary": "Remove a shared item",
-        "tags": ["Shared Items"]
+        "tags": [
+          "Shared Items"
+        ]
       }
     },
     "/shared-items/{itemId}/claim": {
@@ -1548,7 +2058,9 @@
           }
         ],
         "summary": "Claim responsibility for a shared item",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/release": {
@@ -1565,7 +2077,7 @@
           }
         ],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1575,7 +2087,9 @@
           }
         ],
         "summary": "Release responsibility for a shared item",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/pack": {
@@ -1602,7 +2116,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1612,7 +2126,9 @@
           }
         ],
         "summary": "Mark responsibility as packed",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/extra": {
@@ -1639,7 +2155,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1649,7 +2165,9 @@
           }
         ],
         "summary": "Bring extra units",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/report-missing": {
@@ -1676,7 +2194,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1686,7 +2204,9 @@
           }
         ],
         "summary": "Report item as missing (FORGOT/COULD_NOT_BRING/REPLACEMENT_ARRANGED)",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/take-over": {
@@ -1713,7 +2233,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1723,7 +2243,9 @@
           }
         ],
         "summary": "Take over from a missing item",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/transfer": {
@@ -1750,7 +2272,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -1760,7 +2282,46 @@
           }
         ],
         "summary": "Transfer responsibility to another member",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
+      }
+    },
+    "/shared-items/{itemId}/transfers/{transferId}/accept": {
+      "post": {
+        "operationId": "ResponsibilitiesController_acceptTransfer",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "transferId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept a pending responsibility transfer",
+        "tags": [
+          "Shared Responsibilities"
+        ]
       }
     },
     "/shared-items/{itemId}/coverage": {
@@ -1787,7 +2348,965 @@
           }
         ],
         "summary": "Get coverage status for a shared item",
-        "tags": ["Shared Responsibilities"]
+        "tags": [
+          "Shared Responsibilities"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_listNotifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user notifications (paginated)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/groups/{groupId}/preparation-templates": {
+      "get": {
+        "operationId": "PreparationTemplatesController_list",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List reusable preparation templates",
+        "tags": [
+          "Preparation Templates"
+        ]
+      }
+    },
+    "/groups/{groupId}/preparation-templates/{templateId}": {
+      "get": {
+        "operationId": "PreparationTemplatesController_get",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "templateId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all versions of a preparation template",
+        "tags": [
+          "Preparation Templates"
+        ]
+      }
+    },
+    "/groups/{groupId}/preparation-templates/from-events/{activityId}": {
+      "post": {
+        "operationId": "PreparationTemplatesController_createFromEvent",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateFromEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a preparation template from an event",
+        "tags": [
+          "Preparation Templates"
+        ]
+      }
+    },
+    "/groups/{groupId}/preparation-templates/{templateId}/versions/from-events/{activityId}": {
+      "post": {
+        "operationId": "PreparationTemplatesController_addVersion",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "templateId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save an event as a new template version",
+        "tags": [
+          "Preparation Templates"
+        ]
+      }
+    },
+    "/groups/{groupId}/preparation-templates/{templateId}/events": {
+      "post": {
+        "operationId": "PreparationTemplatesController_createEvent",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "templateId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventFromTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create an independent event from a template version",
+        "tags": [
+          "Preparation Templates"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/recurrence": {
+      "post": {
+        "operationId": "EventRecurrenceController_create",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecurrenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create independently tracked recurring occurrences",
+        "tags": [
+          "Event Recurrence"
+        ]
+      }
+    },
+    "/groups/{groupId}/recurrence-series/{seriesId}/future/{activityId}": {
+      "patch": {
+        "operationId": "EventRecurrenceController_updateFuture",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "seriesId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFutureEventsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update this and future occurrences",
+        "tags": [
+          "Event Recurrence"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/cancel-occurrence": {
+      "post": {
+        "operationId": "EventRecurrenceController_cancel",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel one recurring occurrence",
+        "tags": [
+          "Event Recurrence"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/roles": {
+      "post": {
+        "operationId": "EventMembersController_createRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create an event-specific role with requirements",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/roles/{roleId}/assignments": {
+      "post": {
+        "operationId": "EventMembersController_assignRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEventRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign an event role to a group member",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/roles/{roleId}/assignments/{userId}": {
+      "delete": {
+        "operationId": "EventMembersController_removeRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove an event role without deleting packing decisions",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/members/me": {
+      "patch": {
+        "operationId": "EventMembersController_updateSelf",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set attendance, packing time, and leaving time",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/members": {
+      "get": {
+        "operationId": "EventMembersController_list",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List event attendance and preparation times",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/members/me/requirements": {
+      "get": {
+        "operationId": "EventMembersController_requirements",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get role-specific personal requirements",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/activity-log": {
+      "get": {
+        "operationId": "EventMembersController_log",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the append-only event activity log",
+        "tags": [
+          "Event Members"
+        ]
+      }
+    },
+    "/equipment-catalogue/search": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_search",
+        "parameters": [
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sport",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rank exact, alias, prefix, and fuzzy equipment matches",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/bootstrap": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_bootstrap",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download deterministic catalogue data for local autocomplete",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/preferences/me": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_preference",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      },
+      "patch": {
+        "operationId": "EquipmentCatalogueController_updatePreference",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSuggestionPreferenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/preferences/me/personalization": {
+      "delete": {
+        "operationId": "EquipmentCatalogueController_clear",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disable and clear personalized ranking controls",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/activities/{activityId}/smart-drafts/accept": {
+      "post": {
+        "description": "This endpoint accepts structured items only. Browser AI prompts and raw model output are never accepted or stored.",
+        "operationId": "SmartDraftsController_accept",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptSmartDraftDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Persist only explicitly accepted browser-generated draft items",
+        "tags": [
+          "Smart Add Drafts"
+        ]
       }
     },
     "/packing-sessions": {
@@ -1815,7 +3334,9 @@
           }
         ],
         "summary": "Start a new packing session",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       },
       "get": {
         "operationId": "PackingSessionsController_listSessions",
@@ -1826,7 +3347,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["IN_PROGRESS", "COMPLETED", "ABANDONED"]
+              "enum": [
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ABANDONED"
+              ]
             }
           }
         ],
@@ -1841,7 +3366,9 @@
           }
         ],
         "summary": "List user packing sessions",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/packing-sessions/{sessionId}": {
@@ -1868,7 +3395,9 @@
           }
         ],
         "summary": "Get packing session details with decisions",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/packing-sessions/{sessionId}/decisions": {
@@ -1905,7 +3434,9 @@
           }
         ],
         "summary": "Record a packing decision",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/packing-sessions/{sessionId}/complete": {
@@ -1932,7 +3463,9 @@
           }
         ],
         "summary": "Complete a packing session",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/packing-sessions/{sessionId}/abandon": {
@@ -1959,7 +3492,9 @@
           }
         ],
         "summary": "Abandon a packing session",
-        "tags": ["Packing Sessions"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/packing-sessions/{sessionId}/remaining": {
@@ -1986,87 +3521,9 @@
           }
         ],
         "summary": "Get remaining mandatory items for a session",
-        "tags": ["Packing Sessions"]
-      }
-    },
-    "/notifications": {
-      "get": {
-        "operationId": "NotificationsController_listNotifications",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List user notifications (paginated)",
-        "tags": ["Notifications"]
-      }
-    },
-    "/notifications/{id}/read": {
-      "patch": {
-        "operationId": "NotificationsController_markAsRead",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark a notification as read",
-        "tags": ["Notifications"]
-      }
-    },
-    "/notifications/read-all": {
-      "patch": {
-        "operationId": "NotificationsController_markAllAsRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark all notifications as read",
-        "tags": ["Notifications"]
+        "tags": [
+          "Packing Sessions"
+        ]
       }
     },
     "/activities/{activityId}/readiness": {
@@ -2093,7 +3550,9 @@
           }
         ],
         "summary": "Get group readiness for an activity",
-        "tags": ["Readiness"]
+        "tags": [
+          "Readiness"
+        ]
       }
     },
     "/packing-sessions/{sessionId}/readiness": {
@@ -2120,7 +3579,1426 @@
           }
         ],
         "summary": "Get personal readiness for a packing session",
-        "tags": ["Readiness"]
+        "tags": [
+          "Readiness"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory": {
+      "get": {
+        "operationId": "InventoryController_list",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "holderId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search and filter persistent team inventory",
+        "tags": [
+          "Team Inventory"
+        ]
+      },
+      "post": {
+        "operationId": "InventoryController_create",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInventoryItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a persistent inventory catalogue entry",
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory/{itemId}": {
+      "get": {
+        "operationId": "InventoryController_get",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get inventory with availability and custody",
+        "tags": [
+          "Team Inventory"
+        ]
+      },
+      "patch": {
+        "operationId": "InventoryController_update",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInventoryItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      },
+      "delete": {
+        "operationId": "InventoryController_archive",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory/{itemId}/batches": {
+      "post": {
+        "operationId": "InventoryController_createBatch",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInventoryBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory/{itemId}/assets": {
+      "post": {
+        "operationId": "InventoryController_createAsset",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInventoryAssetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory/locations/all": {
+      "get": {
+        "operationId": "InventoryController_listLocations",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory/locations": {
+      "post": {
+        "operationId": "InventoryController_createLocation",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStorageLocationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Inventory"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/reservations": {
+      "post": {
+        "operationId": "InventoryOperationsController_reserve",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveInventoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atomically reserve inventory for an event requirement",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/reservations/{reservationId}/release": {
+      "post": {
+        "operationId": "InventoryOperationsController_release",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reservationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/checkouts": {
+      "post": {
+        "operationId": "InventoryOperationsController_checkout",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutInventoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check out a batch quantity or asset to a member",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/custodies/{custodyId}/return": {
+      "post": {
+        "operationId": "InventoryOperationsController_returnCustody",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "custodyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnInventoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a full or partial return with condition",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/custodies/{custodyId}/transfer": {
+      "post": {
+        "operationId": "InventoryOperationsController_transfer",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "custodyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCustodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transfer current custody to another group member",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/condition-reports": {
+      "post": {
+        "operationId": "InventoryOperationsController_reportCondition",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportInventoryConditionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report damage or update stock condition",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-operations/batches/{batchId}/corrections": {
+      "post": {
+        "operationId": "InventoryOperationsController_correctBatch",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "batchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectBatchQuantityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Append a reasoned batch quantity correction",
+        "tags": [
+          "Inventory Operations"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-history": {
+      "get": {
+        "operationId": "InventoryRecordsController_history",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "batchId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RESERVATION",
+                "RESERVATION_RELEASE",
+                "CHECKOUT",
+                "TRANSFER",
+                "RETURN",
+                "CORRECTION",
+                "CONDITION_CHANGE"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Inventory Records"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-history.csv": {
+      "get": {
+        "operationId": "InventoryRecordsController_exportCsv",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "batchId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RESERVATION",
+                "RESERVATION_RELEASE",
+                "CHECKOUT",
+                "TRANSFER",
+                "RETURN",
+                "CORRECTION",
+                "CONDITION_CHANGE"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Inventory Records"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-overdue": {
+      "get": {
+        "operationId": "InventoryRecordsController_overdue",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Inventory Records"
+        ]
+      }
+    },
+    "/groups/{groupId}/inventory-qr": {
+      "post": {
+        "operationId": "InventoryRecordsController_generateQr",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateInventoryQrDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate or rotate a printable inventory QR code",
+        "tags": [
+          "Inventory Records"
+        ]
+      }
+    },
+    "/inventory-qr/{token}": {
+      "get": {
+        "operationId": "InventoryRecordsController_resolve",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolve an inventory QR for an authenticated member",
+        "tags": [
+          "Inventory Records"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather": {
+      "get": {
+        "operationId": "WeatherController_get",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather/refresh": {
+      "post": {
+        "operationId": "WeatherController_refresh",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh and evaluate the event-time forecast",
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather-suggestions/{suggestionId}/accept": {
+      "post": {
+        "operationId": "WeatherController_accept",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suggestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewWeatherSuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather-suggestions/{suggestionId}/dismiss": {
+      "post": {
+        "operationId": "WeatherController_dismiss",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suggestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/weather-rules/{ruleKey}": {
+      "patch": {
+        "operationId": "WeatherController_updateRule",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWeatherRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds/preview-url": {
+      "post": {
+        "operationId": "CalendarImportsController_previewUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewCalendarUrlDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview an HTTPS iCalendar feed without saving it",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds/preview-file": {
+      "post": {
+        "operationId": "CalendarImportsController_previewFile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewCalendarFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview uploaded iCalendar content without saving it",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds/import-file": {
+      "post": {
+        "operationId": "CalendarImportsController_importFile",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCalendarFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import events from reviewed iCalendar content",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds": {
+      "post": {
+        "operationId": "CalendarImportsController_connect",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectCalendarFeedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Connect and initially synchronize a calendar feed",
+        "tags": [
+          "Calendar imports"
+        ]
+      },
+      "get": {
+        "operationId": "CalendarImportsController_list",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List calendar feeds without exposing their URLs",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds/{feedId}/sync": {
+      "post": {
+        "operationId": "CalendarImportsController_sync",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feedId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Synchronize a connected calendar feed now",
+        "tags": [
+          "Calendar imports"
+        ]
+      }
+    },
+    "/groups/{groupId}/calendar-feeds/{feedId}": {
+      "delete": {
+        "operationId": "CalendarImportsController_disconnect",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feedId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disconnect a feed while retaining imported events",
+        "tags": [
+          "Calendar imports"
+        ]
       }
     }
   },
@@ -2159,7 +5037,10 @@
             "example": "John"
           }
         },
-        "required": ["email", "password"]
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "VerifyEmailDto": {
         "type": "object",
@@ -2169,7 +5050,9 @@
             "description": "Email verification token"
           }
         },
-        "required": ["token"]
+        "required": [
+          "token"
+        ]
       },
       "ResendVerificationDto": {
         "type": "object",
@@ -2179,7 +5062,9 @@
             "example": "user@example.com"
           }
         },
-        "required": ["email"]
+        "required": [
+          "email"
+        ]
       },
       "LoginDto": {
         "type": "object",
@@ -2193,7 +5078,10 @@
             "example": "StrongP@ss1"
           }
         },
-        "required": ["email", "password"]
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "RefreshTokenDto": {
         "type": "object",
@@ -2203,7 +5091,9 @@
             "description": "Refresh token"
           }
         },
-        "required": ["refreshToken"]
+        "required": [
+          "refreshToken"
+        ]
       },
       "PasswordResetRequestDto": {
         "type": "object",
@@ -2213,7 +5103,9 @@
             "example": "user@example.com"
           }
         },
-        "required": ["email"]
+        "required": [
+          "email"
+        ]
       },
       "PasswordResetConfirmDto": {
         "type": "object",
@@ -2229,7 +5121,19 @@
             "maxLength": 128
           }
         },
-        "required": ["token", "newPassword"]
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "StartSsoDto": {
+        "type": "object",
+        "properties": {
+          "returnUrl": {
+            "type": "string",
+            "description": "Optional same-origin client URL used after authentication"
+          }
+        }
       },
       "CreateGroupDto": {
         "type": "object",
@@ -2250,7 +5154,10 @@
             "example": "football"
           }
         },
-        "required": ["name", "sportType"]
+        "required": [
+          "name",
+          "sportType"
+        ]
       },
       "UpdateGroupDto": {
         "type": "object",
@@ -2278,10 +5185,27 @@
           "role": {
             "type": "string",
             "description": "New role for the member",
-            "enum": ["ADMIN", "MEMBER"]
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ]
           }
         },
-        "required": ["role"]
+        "required": [
+          "role"
+        ]
+      },
+      "TransferOwnershipDto": {
+        "type": "object",
+        "properties": {
+          "targetUserId": {
+            "type": "string",
+            "description": "User ID of the new owner"
+          }
+        },
+        "required": [
+          "targetUserId"
+        ]
       },
       "CreateInvitationDto": {
         "type": "object",
@@ -2309,14 +5233,25 @@
           "activityTypes": {
             "type": "array",
             "description": "Activity types for this sport",
-            "example": ["TRAINING", "COMPETITION"],
+            "example": [
+              "TRAINING",
+              "COMPETITION"
+            ],
             "items": {
               "type": "string",
-              "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"]
+              "enum": [
+                "TRAINING",
+                "COMPETITION",
+                "CASUAL",
+                "TRAVEL"
+              ]
             }
           }
         },
-        "required": ["name", "activityTypes"]
+        "required": [
+          "name",
+          "activityTypes"
+        ]
       },
       "UpdateSportProfileDto": {
         "type": "object",
@@ -2329,10 +5264,18 @@
           "activityTypes": {
             "type": "array",
             "description": "Activity types for this sport",
-            "example": ["TRAINING", "CASUAL"],
+            "example": [
+              "TRAINING",
+              "CASUAL"
+            ],
             "items": {
               "type": "string",
-              "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"]
+              "enum": [
+                "TRAINING",
+                "COMPETITION",
+                "CASUAL",
+                "TRAVEL"
+              ]
             }
           }
         }
@@ -2353,11 +5296,19 @@
           "activityType": {
             "type": "string",
             "description": "Activity type filter",
-            "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"],
+            "enum": [
+              "TRAINING",
+              "COMPETITION",
+              "CASUAL",
+              "TRAVEL"
+            ],
             "example": "COMPETITION"
           }
         },
-        "required": ["name", "sportProfileId"]
+        "required": [
+          "name",
+          "sportProfileId"
+        ]
       },
       "UpdateChecklistDto": {
         "type": "object",
@@ -2370,7 +5321,12 @@
           "activityType": {
             "type": "string",
             "description": "Activity type filter",
-            "enum": ["TRAINING", "COMPETITION", "CASUAL", "TRAVEL"],
+            "enum": [
+              "TRAINING",
+              "COMPETITION",
+              "CASUAL",
+              "TRAVEL"
+            ],
             "example": "TRAINING"
           }
         }
@@ -2403,9 +5359,21 @@
             "type": "string",
             "description": "Additional notes",
             "example": "Size L"
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Display order",
+            "example": 0
+          },
+          "catalogueItemId": {
+            "type": "string",
+            "description": "Stable catalogue item identifier",
+            "format": "uuid"
           }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       },
       "UpdateEquipmentItemDto": {
         "type": "object",
@@ -2448,7 +5416,10 @@
             "example": 0
           }
         },
-        "required": ["id", "sortOrder"]
+        "required": [
+          "id",
+          "sortOrder"
+        ]
       },
       "ReorderItemsDto": {
         "type": "object",
@@ -2461,11 +5432,153 @@
             }
           }
         },
-        "required": ["items"]
+        "required": [
+          "items"
+        ]
       },
       "CreateGroupActivityDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "activityType": {
+            "type": "string",
+            "enum": [
+              "TRAINING",
+              "COMPETITION",
+              "CASUAL",
+              "TRAVEL"
+            ]
+          },
+          "sportProfileId": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "venueName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "INDOOR",
+              "COVERED_OUTDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED",
+              "COMPLETED",
+              "ARCHIVED"
+            ],
+            "default": "DRAFT"
+          },
+          "responsibilityDeadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "activityType"
+        ]
+      },
+      "UpdateGroupActivityDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "activityType": {
+            "type": "string",
+            "enum": [
+              "TRAINING",
+              "COMPETITION",
+              "CASUAL",
+              "TRAVEL"
+            ]
+          },
+          "sportProfileId": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "venueName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "INDOOR",
+              "COVERED_OUTDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED",
+              "COMPLETED",
+              "ARCHIVED"
+            ],
+            "default": "DRAFT"
+          },
+          "responsibilityDeadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "CreateSharedItemDto": {
         "type": "object",
@@ -2499,19 +5612,310 @@
         "type": "object",
         "properties": {}
       },
+      "CreateTemplateFromEventDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateEventFromTemplateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Defaults to latest version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED",
+              "COMPLETED",
+              "ARCHIVED"
+            ],
+            "default": "DRAFT"
+          }
+        },
+        "required": [
+          "name",
+          "date"
+        ]
+      },
+      "CreateRecurrenceDto": {
+        "type": "object",
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "DAILY",
+              "WEEKLY",
+              "CUSTOM"
+            ]
+          },
+          "interval": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 52,
+            "default": 1
+          },
+          "daysOfWeek": {
+            "description": "UTC weekdays, Sunday is 0",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "occurrenceDates": {
+            "description": "Explicit ISO timestamps used for CUSTOM recurrence",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Europe/Warsaw",
+            "maxLength": 100
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 366
+          }
+        },
+        "required": [
+          "frequency",
+          "timezone"
+        ]
+      },
+      "UpdateFutureEventsDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "venueName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "INDOOR",
+              "COVERED_OUTDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          }
+        }
+      },
+      "RoleRequirementDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isMandatory": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateEventRoleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleRequirementDto"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "AssignEventRoleDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "UpdateEventMemberDto": {
+        "type": "object",
+        "properties": {
+          "attendanceStatus": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "ATTENDING",
+              "NOT_ATTENDING",
+              "TENTATIVE"
+            ]
+          },
+          "packingAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "leavingAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateSuggestionPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "personalizedRanking": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "personalizedRanking"
+        ]
+      },
+      "AcceptedSmartDraftItemDto": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "PERSONAL",
+              "SHARED"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isMandatory": {
+            "type": "boolean",
+            "default": true
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "catalogueItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "checklistId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for PERSONAL items"
+          }
+        },
+        "required": [
+          "target",
+          "name"
+        ]
+      },
+      "AcceptSmartDraftDto": {
+        "type": "object",
+        "properties": {
+          "acceptedItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptedSmartDraftItemDto"
+            }
+          }
+        },
+        "required": [
+          "acceptedItems"
+        ]
+      },
       "StartPackingSessionDto": {
         "type": "object",
         "properties": {
           "checklistId": {
             "type": "string",
-            "description": "Checklist to pack from"
+            "description": "Checklist to pack from (resolved automatically from activity if not provided)"
           },
           "groupActivityId": {
             "type": "string",
             "description": "Group activity ID for group packing sessions"
           }
-        },
-        "required": ["checklistId"]
+        }
       },
       "RecordDecisionDto": {
         "type": "object",
@@ -2526,18 +5930,447 @@
           },
           "decision": {
             "type": "string",
-            "enum": ["PACKED", "NOT_PACKED", "SKIPPED"]
+            "enum": [
+              "PACKED",
+              "NOT_PACKED",
+              "SKIPPED"
+            ]
           },
           "reason": {
             "type": "string",
-            "enum": ["FORGOT", "COULD_NOT_BRING", "REPLACEMENT_ARRANGED", "NOT_NEEDED"]
+            "enum": [
+              "FORGOT",
+              "COULD_NOT_BRING",
+              "REPLACEMENT_ARRANGED",
+              "NOT_NEEDED"
+            ]
           },
           "notes": {
             "type": "string",
             "description": "Additional notes"
           }
         },
-        "required": ["decision"]
+        "required": [
+          "decision"
+        ]
+      },
+      "CreateInventoryItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 50,
+            "default": "piece"
+          },
+          "trackingType": {
+            "type": "string",
+            "enum": [
+              "BATCH",
+              "ASSET"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "trackingType"
+        ]
+      },
+      "UpdateInventoryItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 50,
+            "default": "piece"
+          },
+          "trackingType": {
+            "type": "string",
+            "enum": [
+              "BATCH",
+              "ASSET"
+            ]
+          }
+        }
+      },
+      "CreateInventoryBatchDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "GOOD",
+              "NEEDS_ATTENTION",
+              "DAMAGED",
+              "INCOMPLETE",
+              "RETIRED"
+            ]
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "CreateInventoryAssetDto": {
+        "type": "object",
+        "properties": {
+          "assetTag": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "serialNumber": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "GOOD",
+              "NEEDS_ATTENTION",
+              "DAMAGED",
+              "INCOMPLETE",
+              "RETIRED"
+            ]
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "assetTag"
+        ]
+      },
+      "CreateStorageLocationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "details": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ReserveInventoryDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "sharedItemId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "sharedItemId"
+        ]
+      },
+      "CheckoutInventoryDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "holderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reservationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "holderId"
+        ]
+      },
+      "ReturnInventoryDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Required for partial batch return"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "GOOD",
+              "NEEDS_ATTENTION",
+              "DAMAGED",
+              "INCOMPLETE",
+              "RETIRED"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        }
+      },
+      "TransferCustodyDto": {
+        "type": "object",
+        "properties": {
+          "holderId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "holderId"
+        ]
+      },
+      "ReportInventoryConditionDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "GOOD",
+              "NEEDS_ATTENTION",
+              "DAMAGED",
+              "INCOMPLETE",
+              "RETIRED"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "condition"
+        ]
+      },
+      "CorrectBatchQuantityDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "quantity",
+          "reason"
+        ]
+      },
+      "GenerateInventoryQrDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ReviewWeatherSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "PERSONAL",
+              "SHARED"
+            ]
+          },
+          "itemName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "checklistId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required when accepting as a personal item"
+          }
+        }
+      },
+      "UpdateWeatherRuleDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "PreviewCalendarUrlDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "PreviewCalendarFileDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "UTF-8 iCalendar content",
+            "maxLength": 5000000
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ImportCalendarFileDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "UTF-8 iCalendar content",
+            "maxLength": 5000000
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "content",
+          "name"
+        ]
+      },
+      "ConnectCalendarFeedDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "GENERIC",
+              "TEAMSNAP",
+              "GAMECHANGER"
+            ],
+            "default": "GENERIC"
+          }
+        },
+        "required": [
+          "url",
+          "name"
+        ]
       }
     }
   }

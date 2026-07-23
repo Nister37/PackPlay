@@ -353,6 +353,10 @@ export class AuthService {
 
   // --- Private helpers ---
 
+  async createLoginSession(userId: string, email: string, userAgent?: string): Promise<TokenPair> {
+    return this.createSession(userId, email, userAgent);
+  }
+
   private async createSession(
     userId: string,
     email: string,

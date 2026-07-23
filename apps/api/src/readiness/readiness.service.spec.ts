@@ -245,5 +245,124 @@ describe('ReadinessService', () => {
       expect(result.memberReadiness[0].packedMandatoryItems).toBe(1);
       expect(result.memberReadiness[0].totalMandatoryItems).toBe(2);
     });
+
+    it('should prioritize overdue uncovered and absent-member risks', async () => {
+      prisma.groupActivity.findUnique.mockResolvedValue({
+        id: 'activity-1',
+        groupId: 'group-1',
+        responsibilityDeadline: new Date(Date.now() - 60_000),
+        sharedItems: [
+          {
+            id: 'shared-1',
+            name: 'Match balls',
+            isMandatory: true,
+            requiredQuantity: 3,
+            responsibilities: [
+              {
+                userId: 'user-2',
+                committedQuantity: 1,
+                status: 'COMMITTED',
+              },
+            ],
+          },
+        ],
+        eventMembers: [{ userId: 'user-2', attendanceStatus: 'NOT_ATTENDING' }],
+        roles: [{ name: 'Goalkeeper', assignments: [] }],
+        group: {
+          members: [
+            { userId: 'user-1', user: { id: 'user-1', name: 'Alice' } },
+            { userId: 'user-2', user: { id: 'user-2', name: 'Bob' } },
+          ],
+        },
+      });
+      prisma.packingSession.findMany.mockResolvedValue([]);
+
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
+
+      expect(result.risks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'MISSING_QUANTITY',
+            severity: 'CRITICAL',
+            missingQuantity: 2,
+          }),
+          expect.objectContaining({
+            type: 'ABSENT_RESPONSIBLE_MEMBER',
+            severity: 'CRITICAL',
+            memberId: 'user-2',
+          }),
+          expect.objectContaining({
+            type: 'UNSTAFFED_ROLE',
+          }),
+        ]),
+      );
+      expect(result.risks[0].severity).toBe('CRITICAL');
+    });
+
+    it('combines usable inventory coverage and flags damaged reservations', async () => {
+      prisma.groupActivity.findUnique.mockResolvedValue({
+        id: 'activity-1',
+        groupId: 'group-1',
+        sharedItems: [
+          {
+            id: 'shared-1',
+            name: 'Match balls',
+            isMandatory: true,
+            requiredQuantity: 3,
+            responsibilities: [{ userId: 'user-1', committedQuantity: 1, status: 'COMMITTED' }],
+            inventoryReservations: [
+              {
+                quantity: 2,
+                batch: { id: 'batch-good', condition: 'GOOD' },
+                asset: null,
+              },
+            ],
+          },
+          {
+            id: 'shared-2',
+            name: 'Medical kit',
+            isMandatory: true,
+            requiredQuantity: 1,
+            responsibilities: [],
+            inventoryReservations: [
+              {
+                quantity: 1,
+                batch: null,
+                asset: { id: 'asset-damaged', condition: 'DAMAGED' },
+              },
+            ],
+          },
+        ],
+        eventMembers: [],
+        roles: [],
+        group: {
+          members: [{ userId: 'user-1', user: { id: 'user-1', name: 'Alice' } }],
+        },
+      });
+      prisma.packingSession.findMany.mockResolvedValue([]);
+
+      const result = await service.getGroupReadiness('activity-1', 'user-1');
+
+      expect(result.coveredSharedItems).toBe(1);
+      expect(result.risks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'DAMAGED_RESERVED_ASSET',
+            itemId: 'shared-2',
+          }),
+          expect.objectContaining({
+            type: 'UNCOVERED_MANDATORY_ITEM',
+            itemId: 'shared-2',
+          }),
+        ]),
+      );
+      expect(
+        result.risks.some(
+          (risk) =>
+            risk.itemId === 'shared-1' &&
+            ['UNCOVERED_MANDATORY_ITEM', 'MISSING_QUANTITY'].includes(risk.type),
+        ),
+      ).toBe(false);
+    });
   });
 });

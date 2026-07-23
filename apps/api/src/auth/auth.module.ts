@@ -9,6 +9,9 @@ import { ConsoleEmailService } from './services/console-email.service';
 import { SmtpEmailService } from './services/smtp-email.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { EMAIL_SERVICE } from './interfaces';
+import { SsoController } from './sso.controller';
+import { SsoCryptoService } from './services/sso-crypto.service';
+import { SsoService } from './services/sso.service';
 
 @Module({
   imports: [
@@ -36,10 +39,12 @@ import { EMAIL_SERVICE } from './interfaces';
       },
     ]),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, SsoController],
   providers: [
     AuthService,
     JwtStrategy,
+    SsoCryptoService,
+    SsoService,
     {
       provide: EMAIL_SERVICE,
       inject: [ConfigService],

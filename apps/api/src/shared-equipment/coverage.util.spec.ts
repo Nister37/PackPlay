@@ -100,6 +100,27 @@ describe('calculateCoverage', () => {
     expect(result.status).toBe(CoverageStatus.REPLACEMENT_FOUND);
   });
 
+  it('combines personal commitments and inventory reservations without double counting', () => {
+    const result = calculateCoverage(
+      5,
+      [
+        {
+          committedQuantity: 2,
+          packedQuantity: 0,
+          extraQuantity: 0,
+          status: SharedResponsibilityStatus.COMMITTED,
+        },
+      ],
+      3,
+    );
+
+    expect(result.status).toBe(CoverageStatus.COVERED);
+    expect(result.committedQuantity).toBe(5);
+    expect(result.personalCommittedQuantity).toBe(2);
+    expect(result.inventoryReservedQuantity).toBe(3);
+    expect(result.uncoveredQuantity).toBe(0);
+  });
+
   it('should not count RELEASED responsibilities in committed total', () => {
     const result = calculateCoverage(2, [
       {

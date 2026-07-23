@@ -17,6 +17,11 @@ import { ReadinessModule } from './readiness/readiness.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
+import { EventPlanningModule } from './event-planning/event-planning.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
+import { WeatherModule } from './weather/weather.module';
+import { CalendarImportsModule } from './calendar-imports/calendar-imports.module';
 
 @Module({
   imports: [
@@ -38,6 +43,11 @@ import { LoggingInterceptor } from './common/logging.interceptor';
     ReadinessModule,
     NotificationsModule,
     RealtimeModule,
+    EventPlanningModule,
+    InventoryModule,
+    EquipmentCatalogueModule,
+    WeatherModule,
+    CalendarImportsModule,
   ],
   providers: [
     {

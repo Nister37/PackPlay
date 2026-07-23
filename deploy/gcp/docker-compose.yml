@@ -12,15 +12,15 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "127.0.0.1",
-          "-u",
-          "packplay",
-          "-p${MYSQL_PASSWORD}",
-          "--silent",
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-u',
+          'packplay',
+          '-p${MYSQL_PASSWORD}',
+          '--silent',
         ]
       interval: 10s
       timeout: 5s
@@ -30,18 +30,18 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD}']
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 12
 
   migrate:
     image: ${API_IMAGE}
-    restart: "no"
+    restart: 'no'
     environment:
       DATABASE_URL: mysql://packplay:${MYSQL_PASSWORD}@mysql:3306/packplay
     command:
@@ -64,7 +64,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      CORS_ORIGIN: https://${APP_DOMAIN}
+      CORS_ORIGIN: https://${APP_DOMAIN:-packplay.pro}
+      FRONTEND_URL: https://${APP_DOMAIN:-packplay.pro}
       DATABASE_URL: mysql://packplay:${MYSQL_PASSWORD}@mysql:3306/packplay
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -76,8 +77,12 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-noreply@packplay.app}
+      SMTP_FROM: ${SMTP_FROM:-noreply@packplay.pro}
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: https://${APP_DOMAIN:-packplay.pro}/api/auth/sso/google/callback
+      SSO_STATE_ENCRYPTION_KEY: ${SSO_STATE_ENCRYPTION_KEY:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -88,9 +93,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 15s
@@ -109,11 +114,11 @@ services:
     image: caddy:2.10-alpine
     restart: unless-stopped
     environment:
-      APP_DOMAIN: ${APP_DOMAIN}
+      APP_DOMAIN: ${APP_DOMAIN:-packplay.pro}
       ACME_EMAIL: ${ACME_EMAIL}
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
