@@ -3253,6 +3253,223 @@
           "Readiness"
         ]
       }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather": {
+      "get": {
+        "operationId": "WeatherController_get",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather/refresh": {
+      "post": {
+        "operationId": "WeatherController_refresh",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh and evaluate the event-time forecast",
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather-suggestions/{suggestionId}/accept": {
+      "post": {
+        "operationId": "WeatherController_accept",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suggestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewWeatherSuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/weather-suggestions/{suggestionId}/dismiss": {
+      "post": {
+        "operationId": "WeatherController_dismiss",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suggestionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
+    },
+    "/groups/{groupId}/weather-rules/{ruleKey}": {
+      "patch": {
+        "operationId": "WeatherController_updateRule",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWeatherRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Weather Preparation"
+        ]
+      }
     }
   },
   "info": {
@@ -4120,6 +4337,42 @@
         },
         "required": [
           "decision"
+        ]
+      },
+      "ReviewWeatherSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "PERSONAL",
+              "SHARED"
+            ]
+          },
+          "itemName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "checklistId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required when accepting as a personal item"
+          }
+        }
+      },
+      "UpdateWeatherRuleDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
         ]
       }
     }
