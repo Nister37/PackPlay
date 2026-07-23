@@ -5,3 +5,4 @@ export { ResendVerificationDto } from './resend-verification.dto';
 export { RefreshTokenDto } from './refresh-token.dto';
 export { PasswordResetRequestDto } from './password-reset-request.dto';
 export { PasswordResetConfirmDto } from './password-reset-confirm.dto';
+export { SsoCallbackDto, StartSsoDto } from './sso.dto';
