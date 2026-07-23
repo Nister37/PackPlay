@@ -36,6 +36,7 @@ model User {
   eventLogEntries        EventActivityLog[]
   preparationTemplates   PreparationTemplate[] @relation("preparationTemplateCreated")
   templateVersions       PreparationTemplateVersion[] @relation("templateVersionCreated")
+  createdCalendarFeeds   CalendarFeed[] @relation("calendarFeedCreated")
 
   @@map("users")
 }
@@ -204,6 +205,12 @@ enum EventAttendanceStatus {
   TENTATIVE
 }
 
+enum CalendarProvider {
+  GENERIC
+  TEAMSNAP
+  GAMECHANGER
+}
+
 model Group {
   id          String   @id @default(uuid())
   name        String   @db.VarChar(100)
@@ -218,6 +225,7 @@ model Group {
   notifications Notification[]
   recurrenceSeries EventRecurrenceSeries[]
   preparationTemplates PreparationTemplate[]
+  calendarFeeds CalendarFeed[]
 
   @@map("groups")
 }
@@ -290,6 +298,7 @@ model GroupActivity {
   roles            EventRole[]
   eventMembers     EventMember[]
   activityLog      EventActivityLog[]
+  calendarImport   CalendarImportedEvent?
 
   @@index([groupId])
   @@index([groupId, createdAt])
@@ -416,6 +425,47 @@ model PreparationTemplateVersion {
 
   @@unique([templateId, version])
   @@map("preparation_template_versions")
+}
+
+model CalendarFeed {
+  id               String           @id @default(uuid())
+  groupId          String           @map("group_id")
+  provider         CalendarProvider @default(GENERIC)
+  name             String           @db.VarChar(200)
+  encryptedUrl     String           @map("encrypted_url") @db.Text
+  urlHash          String           @unique @map("url_hash") @db.VarChar(64)
+  active           Boolean          @default(true)
+  lastSyncedAt     DateTime?        @map("last_synced_at")
+  lastSuccessfulAt DateTime?        @map("last_successful_at")
+  lastError        String?          @map("last_error") @db.VarChar(1000)
+  createdById      String           @map("created_by_id")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  group          Group                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy      User                    @relation("calendarFeedCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  importedEvents CalendarImportedEvent[]
+
+  @@index([groupId, active])
+  @@map("calendar_feeds")
+}
+
+model CalendarImportedEvent {
+  id           String   @id @default(uuid())
+  feedId       String   @map("feed_id")
+  externalUid  String   @map("external_uid") @db.VarChar(500)
+  recurrenceId String   @default("") @map("recurrence_id") @db.VarChar(200)
+  activityId   String   @unique @map("activity_id")
+  sequence     Int      @default(0)
+  sourceHash   String   @map("source_hash") @db.VarChar(64)
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+
+  feed     CalendarFeed  @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  activity GroupActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([feedId, externalUid, recurrenceId])
+  @@index([feedId, lastSeenAt])
+  @@map("calendar_imported_events")
 }
 
 model SharedItem {
