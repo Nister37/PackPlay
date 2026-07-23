@@ -34,6 +34,7 @@ model User {
   heldInventoryAssets  InventoryAsset[] @relation("assetHolder")
   inventoryMovements   InventoryMovement[] @relation("movementActor")
   inventoryDamageReports InventoryDamageReport[] @relation("damageReporter")
+  inventoryCustodies     InventoryCustody[] @relation("custodyHolder")
 
   @@map("users")
 }
@@ -277,6 +278,7 @@ model GroupActivity {
   sharedItems     SharedItem[]
   packingSessions PackingSession[]
   inventoryMovements InventoryMovement[]
+  inventoryCustodies InventoryCustody[]
 
   @@index([groupId])
   @@index([groupId, createdAt])
@@ -361,6 +363,7 @@ model InventoryBatch {
   reservations  InventoryReservation[]
   movements     InventoryMovement[]
   damageReports InventoryDamageReport[]
+  custodies     InventoryCustody[]
 
   @@index([inventoryItemId])
   @@index([locationId])
@@ -386,6 +389,7 @@ model InventoryAsset {
   reservations  InventoryReservation[]
   movements     InventoryMovement[]
   damageReports InventoryDamageReport[]
+  custodies     InventoryCustody[]
 
   @@unique([inventoryItemId, assetTag])
   @@index([locationId])
@@ -459,6 +463,30 @@ model InventoryDamageReport {
   @@index([batchId, createdAt])
   @@index([assetId, createdAt])
   @@map("inventory_damage_reports")
+}
+
+model InventoryCustody {
+  id           String    @id @default(uuid())
+  batchId      String?   @map("batch_id")
+  assetId      String?   @map("asset_id")
+  holderId     String    @map("holder_id")
+  activityId   String?   @map("activity_id")
+  quantity     Int       @default(1)
+  purpose      String?   @db.VarChar(500)
+  checkedOutAt DateTime  @default(now()) @map("checked_out_at")
+  dueAt        DateTime? @map("due_at")
+  returnedAt   DateTime? @map("returned_at")
+
+  batch  InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset  InventoryAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  holder User            @relation("custodyHolder", fields: [holderId], references: [id], onDelete: Restrict)
+  activity GroupActivity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, returnedAt])
+  @@index([assetId, returnedAt])
+  @@index([holderId, returnedAt])
+  @@index([activityId])
+  @@map("inventory_custodies")
 }
 
 enum ResponsibilityTransferStatus {
