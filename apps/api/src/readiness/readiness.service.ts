@@ -33,7 +33,8 @@ export interface ReadinessRisk {
     | 'UNCOVERED_MANDATORY_ITEM'
     | 'MISSING_QUANTITY'
     | 'ABSENT_RESPONSIBLE_MEMBER'
-    | 'UNSTAFFED_ROLE';
+    | 'UNSTAFFED_ROLE'
+    | 'DAMAGED_RESERVED_ASSET';
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   message: string;
   itemId?: string;
@@ -121,6 +122,10 @@ export class ReadinessService {
             responsibilities: true,
             inventoryReservations: {
               where: { status: { in: ['ACTIVE', 'FULFILLED'] } },
+              include: {
+                batch: { select: { id: true, condition: true } },
+                asset: { select: { id: true, condition: true } },
+              },
             },
           },
         },
@@ -156,10 +161,9 @@ export class ReadinessService {
             r.status === SharedResponsibilityStatus.PACKED,
         )
         .reduce((sum, r) => sum + r.committedQuantity, 0);
-      const inventoryReserved = (item.inventoryReservations ?? []).reduce(
-        (sum, reservation) => sum + reservation.quantity,
-        0,
-      );
+      const inventoryReserved = (item.inventoryReservations ?? [])
+        .filter((reservation) => this.usableReservation(reservation))
+        .reduce((sum, reservation) => sum + reservation.quantity, 0);
       return activeCommitted + inventoryReserved >= item.requiredQuantity;
     }).length;
 
@@ -228,8 +232,7 @@ export class ReadinessService {
       (activity.eventMembers ?? []).map((member) => [member.userId, member.attendanceStatus]),
     );
     const deadlinePassed = Boolean(
-      activity.responsibilityDeadline &&
-        activity.responsibilityDeadline.getTime() < Date.now(),
+      activity.responsibilityDeadline && activity.responsibilityDeadline.getTime() < Date.now(),
     );
     const risks: ReadinessRisk[] = [];
 
@@ -243,13 +246,13 @@ export class ReadinessService {
         (sum, responsibility) => sum + responsibility.committedQuantity,
         0,
       );
-      const missingQuantity = Math.max(0, item.requiredQuantity - committed);
+      const inventoryReserved = (item.inventoryReservations ?? [])
+        .filter((reservation) => this.usableReservation(reservation))
+        .reduce((sum, reservation) => sum + reservation.quantity, 0);
+      const missingQuantity = Math.max(0, item.requiredQuantity - committed - inventoryReserved);
       if (item.isMandatory && missingQuantity > 0) {
         risks.push({
-          type:
-            committed === 0
-              ? 'UNCOVERED_MANDATORY_ITEM'
-              : 'MISSING_QUANTITY',
+          type: committed === 0 ? 'UNCOVERED_MANDATORY_ITEM' : 'MISSING_QUANTITY',
           severity: deadlinePassed ? 'CRITICAL' : committed === 0 ? 'HIGH' : 'MEDIUM',
           message:
             committed === 0
@@ -259,6 +262,19 @@ export class ReadinessService {
           missingQuantity,
           actionUrl: `/groups/${activity.groupId}/equipment/${item.id}`,
         });
+      }
+
+      for (const reservation of item.inventoryReservations ?? []) {
+        if (!this.usableReservation(reservation)) {
+          const stockId = reservation.asset?.id ?? reservation.batch?.id;
+          risks.push({
+            type: 'DAMAGED_RESERVED_ASSET',
+            severity: 'CRITICAL',
+            message: `Reserved inventory for ${item.name} is no longer usable`,
+            itemId: item.id,
+            actionUrl: `/groups/${activity.groupId}/inventory/${stockId ?? ''}`,
+          });
+        }
       }
 
       for (const responsibility of activeResponsibilities) {
@@ -277,8 +293,7 @@ export class ReadinessService {
 
     for (const role of activity.roles ?? []) {
       const attendingAssignments = role.assignments.filter(
-        (assignment) =>
-          attendanceByUser.get(assignment.userId) !== 'NOT_ATTENDING',
+        (assignment) => attendanceByUser.get(assignment.userId) !== 'NOT_ATTENDING',
       );
       if (role.assignments.length === 0 || attendingAssignments.length === 0) {
         risks.push({
@@ -305,5 +320,13 @@ export class ReadinessService {
     await this.redis.set(cacheKey, result, 30);
 
     return result;
+  }
+
+  private usableReservation(reservation: {
+    batch?: { condition: string } | null;
+    asset?: { condition: string } | null;
+  }) {
+    const condition = reservation.asset?.condition ?? reservation.batch?.condition;
+    return condition === undefined || ['GOOD', 'NEEDS_ATTENTION'].includes(condition);
   }
 }
