@@ -30,6 +30,7 @@ model User {
   notifications           Notification[]
   outgoingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferFrom")
   incomingResponsibilityTransfers ResponsibilityTransfer[] @relation("transferTo")
+  equipmentSuggestionPreference EquipmentSuggestionPreference?
 
   @@map("users")
 }
@@ -147,12 +148,15 @@ model EquipmentItem {
   sortOrder   Int      @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  catalogueItemId String? @map("catalogue_item_id")
 
   checklist        Checklist         @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   packingDecisions PackingDecision[]
+  catalogueItem    EquipmentCatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
 
   @@index([checklistId])
   @@index([checklistId, sortOrder])
+  @@index([catalogueItemId])
   @@map("equipment_items")
 }
 
@@ -183,6 +187,7 @@ model Group {
   invitations   GroupInvitation[]
   activities    GroupActivity[]
   notifications Notification[]
+  equipmentUsage TeamEquipmentUsage[]
 
   @@map("groups")
 }
@@ -256,15 +261,75 @@ model SharedItem {
   createdById     String   @map("created_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  catalogueItemId String?  @map("catalogue_item_id")
 
   groupActivity    GroupActivity         @relation(fields: [groupActivityId], references: [id], onDelete: Cascade)
   createdBy        User                  @relation("createdSharedItems", fields: [createdById], references: [id], onDelete: Cascade)
   responsibilities SharedResponsibility[]
   packingDecisions PackingDecision[]
   responsibilityTransfers ResponsibilityTransfer[]
+  catalogueItem EquipmentCatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
 
   @@index([groupActivityId])
+  @@index([catalogueItemId])
   @@map("shared_items")
+}
+
+model EquipmentCatalogueItem {
+  id            String   @id @default(uuid())
+  canonicalName String   @unique @map("canonical_name") @db.VarChar(200)
+  category      String   @db.VarChar(100)
+  sports        Json
+  roles         Json
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  aliases        EquipmentCatalogueAlias[]
+  checklistItems EquipmentItem[]
+  sharedItems    SharedItem[]
+  teamUsage      TeamEquipmentUsage[]
+
+  @@index([category, active])
+  @@map("equipment_catalogue_items")
+}
+
+model EquipmentCatalogueAlias {
+  id              String @id @default(uuid())
+  catalogueItemId String @map("catalogue_item_id")
+  alias           String @db.VarChar(200)
+
+  catalogueItem EquipmentCatalogueItem @relation(fields: [catalogueItemId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogueItemId, alias])
+  @@index([alias])
+  @@map("equipment_catalogue_aliases")
+}
+
+model TeamEquipmentUsage {
+  id              String   @id @default(uuid())
+  groupId         String   @map("group_id")
+  catalogueItemId String   @map("catalogue_item_id")
+  useCount        Int      @default(0) @map("use_count")
+  lastUsedAt      DateTime @default(now()) @map("last_used_at")
+
+  group         Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  catalogueItem EquipmentCatalogueItem @relation(fields: [catalogueItemId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, catalogueItemId])
+  @@index([groupId, lastUsedAt])
+  @@map("team_equipment_usage")
+}
+
+model EquipmentSuggestionPreference {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  personalizedRanking Boolean  @default(true) @map("personalized_ranking")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("equipment_suggestion_preferences")
 }
 
 enum ResponsibilityTransferStatus {
