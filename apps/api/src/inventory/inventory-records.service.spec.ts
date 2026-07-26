@@ -7,7 +7,7 @@ import { InventoryRecordsService } from './inventory-records.service';
 describe('InventoryRecordsService', () => {
   let service: InventoryRecordsService;
   const prisma = {
-    inventoryMovement: { findMany: jest.fn() },
+    inventoryMovement: { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) },
     inventoryBatch: { findUnique: jest.fn(), update: jest.fn() },
     inventoryAsset: { findUnique: jest.fn(), update: jest.fn() },
     groupMember: { findUnique: jest.fn() },

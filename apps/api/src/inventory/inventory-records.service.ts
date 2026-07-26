@@ -22,7 +22,7 @@ export class InventoryRecordsService {
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
 
-    const where: Parameters<typeof this.prisma.inventoryMovement.findMany>[0]['where'] = {
+    const where: Record<string, unknown> = {
       groupId,
       ...(query.batchId && { batchId: query.batchId }),
       ...(query.assetId && { assetId: query.assetId }),

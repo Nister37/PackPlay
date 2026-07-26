@@ -1,4 +1,5 @@
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { CalendarImportsService } from './calendar-imports.service';
 import { CalendarParserService } from './calendar-parser.service';
 import { CalendarSecurityService } from './calendar-security.service';
@@ -47,8 +48,10 @@ describe('CalendarImportsService', () => {
       encryptUrl: jest.fn().mockReturnValue('encrypted-marker'),
       urlHash: jest.fn().mockReturnValue('unique-upload-hash'),
     };
+    const redis = { tryLock: jest.fn().mockResolvedValue(true) };
     const service = new CalendarImportsService(
       prisma as unknown as PrismaService,
+      redis as unknown as RedisService,
       parser as unknown as CalendarParserService,
       security as unknown as CalendarSecurityService,
     );

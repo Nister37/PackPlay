@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { OpenMeteoClient } from './open-meteo.client';
 import { WeatherRulesService } from './weather-rules.service';
 import { WeatherService } from './weather.service';
@@ -18,6 +19,7 @@ describe('WeatherService', () => {
   };
   const client = { forecastAt: jest.fn() };
   const rules = { evaluate: jest.fn() };
+  const redis = { tryLock: jest.fn().mockResolvedValue(true) };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -25,6 +27,7 @@ describe('WeatherService', () => {
       providers: [
         WeatherService,
         { provide: PrismaService, useValue: prisma },
+        { provide: RedisService, useValue: redis },
         { provide: OpenMeteoClient, useValue: client },
         { provide: WeatherRulesService, useValue: rules },
       ],
