@@ -1,7 +1,8 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsUUID, Min } from 'class-validator';
-import { SharedResponsibilityStatus } from '@prisma/client';
 
 export class ClaimResponsibilityDto {
+  @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -9,6 +10,7 @@ export class ClaimResponsibilityDto {
 }
 
 export class PackResponsibilityDto {
+  @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -16,6 +18,7 @@ export class PackResponsibilityDto {
 }
 
 export class ExtraResponsibilityDto {
+  @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -23,15 +26,18 @@ export class ExtraResponsibilityDto {
 }
 
 export class ReportMissingDto {
+  @ApiProperty({ enum: ['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED'] })
   @IsEnum(['FORGOT', 'COULD_NOT_BRING', 'REPLACEMENT_ARRANGED'] as const)
   reason!: 'FORGOT' | 'COULD_NOT_BRING' | 'REPLACEMENT_ARRANGED';
 }
 
 export class TransferResponsibilityDto {
+  @ApiProperty({ format: 'uuid' })
   @IsUUID()
   @IsNotEmpty()
   targetUserId!: string;
 
+  @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -39,6 +45,7 @@ export class TransferResponsibilityDto {
 }
 
 export class TakeOverDto {
+  @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)

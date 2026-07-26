@@ -8,9 +8,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GroupMemberRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
+import { ErrorResponseDto } from '../common';
 import { Roles } from '../groups/decorators';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { ReviewWeatherSuggestionDto, UpdateWeatherRuleDto } from './dto';
@@ -24,6 +25,10 @@ export class WeatherController {
   constructor(private readonly weather: WeatherService) {}
 
   @Get('activities/:activityId/weather')
+  @ApiResponse({ status: 200, description: 'Weather snapshot for the activity' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   get(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -35,6 +40,10 @@ export class WeatherController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Refresh and evaluate the event-time forecast' })
+  @ApiResponse({ status: 201, description: 'Forecast refreshed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   refresh(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -45,6 +54,10 @@ export class WeatherController {
   @Post('activities/:activityId/weather-suggestions/:suggestionId/accept')
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
+  @ApiResponse({ status: 201, description: 'Suggestion accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Suggestion not found', type: ErrorResponseDto })
   accept(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -58,6 +71,10 @@ export class WeatherController {
   @Post('activities/:activityId/weather-suggestions/:suggestionId/dismiss')
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
+  @ApiResponse({ status: 201, description: 'Suggestion dismissed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Suggestion not found', type: ErrorResponseDto })
   dismiss(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -70,6 +87,10 @@ export class WeatherController {
   @Patch('weather-rules/:ruleKey')
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
+  @ApiResponse({ status: 200, description: 'Rule updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Rule not found', type: ErrorResponseDto })
   updateRule(
     @Param('groupId') groupId: string,
     @Param('ruleKey') ruleKey: string,

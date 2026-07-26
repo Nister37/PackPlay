@@ -10,9 +10,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GroupMemberRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
+import { ErrorResponseDto } from '../common';
 import { Roles } from '../groups/decorators';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import {
@@ -38,6 +39,10 @@ export class EventMembersController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Create an event-specific role with requirements' })
+  @ApiResponse({ status: 201, description: 'Role created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   createRole(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -50,6 +55,10 @@ export class EventMembersController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Assign an event role to a group member' })
+  @ApiResponse({ status: 201, description: 'Role assigned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Role or activity not found', type: ErrorResponseDto })
   assignRole(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -63,6 +72,10 @@ export class EventMembersController {
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)
   @ApiOperation({ summary: 'Remove an event role without deleting packing decisions' })
+  @ApiResponse({ status: 200, description: 'Assignment removed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Insufficient role', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Assignment not found', type: ErrorResponseDto })
   removeRole(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -74,6 +87,10 @@ export class EventMembersController {
 
   @Patch('members/me')
   @ApiOperation({ summary: 'Set attendance, packing time, and leaving time' })
+  @ApiResponse({ status: 200, description: 'Member preferences updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   updateSelf(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -85,6 +102,10 @@ export class EventMembersController {
 
   @Get('members')
   @ApiOperation({ summary: 'List event attendance and preparation times' })
+  @ApiResponse({ status: 200, description: 'Event members list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   list(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -94,6 +115,10 @@ export class EventMembersController {
 
   @Get('members/me/requirements')
   @ApiOperation({ summary: 'Get role-specific personal requirements' })
+  @ApiResponse({ status: 200, description: 'Personal requirements' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   requirements(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
@@ -104,6 +129,10 @@ export class EventMembersController {
 
   @Get('activity-log')
   @ApiOperation({ summary: 'List the append-only event activity log' })
+  @ApiResponse({ status: 200, description: 'Paginated activity log' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
   log(
     @Param('groupId') groupId: string,
     @Param('activityId') activityId: string,
