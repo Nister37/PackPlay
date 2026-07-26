@@ -70,6 +70,10 @@ export class SharedEquipmentService {
   }
 
   async listActivities(groupId: string, query: ListGroupActivitiesQueryDto = {}) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
     const date: Prisma.DateTimeNullableFilter | undefined =
       query.from || query.to
         ? {
@@ -78,25 +82,37 @@ export class SharedEquipmentService {
           }
         : undefined;
 
-    return this.prisma.groupActivity.findMany({
-      where: {
-        groupId,
-        ...(query.status
-          ? { status: query.status }
-          : { status: { not: GroupActivityStatus.ARCHIVED } }),
-        ...(date && { date }),
-        ...(query.search && {
-          OR: [
-            { name: { contains: query.search } },
-            { venueName: { contains: query.search } },
-          ],
-        }),
-      },
-      orderBy: [{ date: 'asc' }, { createdAt: 'desc' }],
-      include: {
-        _count: { select: { sharedItems: true } },
-      },
-    });
+    const where: Prisma.GroupActivityWhereInput = {
+      groupId,
+      ...(query.status
+        ? { status: query.status }
+        : { status: { not: GroupActivityStatus.ARCHIVED } }),
+      ...(date && { date }),
+      ...(query.search && {
+        OR: [
+          { name: { contains: query.search } },
+          { venueName: { contains: query.search } },
+        ],
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.groupActivity.findMany({
+        where,
+        orderBy: [{ date: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          _count: { select: { sharedItems: true } },
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.groupActivity.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async updateActivity(

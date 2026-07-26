@@ -41,17 +41,33 @@ export class EventActivityLogService {
         message: 'Activity not found',
       });
     }
-    return this.prisma.eventActivityLog.findMany({
-      where: {
-        activityId,
-        ...(query.memberId && { actorId: query.memberId }),
-        ...(query.itemId && { itemId: query.itemId }),
-      },
-      include: {
-        actor: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      activityId,
+      ...(query.memberId && { actorId: query.memberId }),
+      ...(query.itemId && { itemId: query.itemId }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.eventActivityLog.findMany({
+        where,
+        include: {
+          actor: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.eventActivityLog.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 }

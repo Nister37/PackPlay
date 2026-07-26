@@ -18,39 +18,54 @@ export class InventoryRecordsService {
   ) {}
 
   async history(groupId: string, query: InventoryHistoryQueryDto) {
-    return this.prisma.inventoryMovement.findMany({
-      where: {
-        groupId,
-        ...(query.batchId && { batchId: query.batchId }),
-        ...(query.assetId && { assetId: query.assetId }),
-        ...(query.activityId && { activityId: query.activityId }),
-        ...(query.memberId && {
-          OR: [
-            { actorId: query.memberId },
-            { fromHolderId: query.memberId },
-            { toHolderId: query.memberId },
-          ],
-        }),
-        ...(query.type && { type: query.type }),
-        ...((query.from || query.to) && {
-          createdAt: {
-            ...(query.from && { gte: new Date(query.from) }),
-            ...(query.to && { lte: new Date(query.to) }),
-          },
-        }),
-      },
-      include: {
-        actor: { select: { id: true, name: true } },
-        batch: { include: { inventoryItem: true } },
-        asset: { include: { inventoryItem: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 1000,
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const where: Parameters<typeof this.prisma.inventoryMovement.findMany>[0]['where'] = {
+      groupId,
+      ...(query.batchId && { batchId: query.batchId }),
+      ...(query.assetId && { assetId: query.assetId }),
+      ...(query.activityId && { activityId: query.activityId }),
+      ...(query.memberId && {
+        OR: [
+          { actorId: query.memberId },
+          { fromHolderId: query.memberId },
+          { toHolderId: query.memberId },
+        ],
+      }),
+      ...(query.type && { type: query.type }),
+      ...((query.from || query.to) && {
+        createdAt: {
+          ...(query.from && { gte: new Date(query.from) }),
+          ...(query.to && { lte: new Date(query.to) }),
+        },
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryMovement.findMany({
+        where,
+        include: {
+          actor: { select: { id: true, name: true } },
+          batch: { include: { inventoryItem: true } },
+          asset: { include: { inventoryItem: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.inventoryMovement.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async exportCsv(groupId: string, query: InventoryHistoryQueryDto) {
-    const entries = await this.history(groupId, query);
+    const result = await this.history(groupId, query);
     const escape = (value: unknown) => {
       const text =
         value instanceof Date
@@ -60,7 +75,7 @@ export class InventoryRecordsService {
             : String(value);
       return `"${text.replace(/"/g, '""')}"`;
     };
-    const rows = entries.map((entry) => [
+    const rows = result.data.map((entry) => [
       entry.createdAt,
       entry.type,
       entry.batch?.inventoryItem.name ?? entry.asset?.inventoryItem.name,

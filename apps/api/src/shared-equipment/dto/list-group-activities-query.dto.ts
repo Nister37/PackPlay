@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroupActivityStatus } from '@prisma/client';
 import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { PaginationQueryDto } from '../../common/pagination.dto';
 
-export class ListGroupActivitiesQueryDto {
+export class ListGroupActivitiesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: GroupActivityStatus })
   @IsOptional()
   @IsEnum(GroupActivityStatus)

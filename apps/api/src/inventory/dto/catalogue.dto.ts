@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { PaginationQueryDto } from '../../common/pagination.dto';
 
 export class CreateInventoryItemDto {
   @ApiProperty({ minLength: 2, maxLength: 200 })
@@ -40,7 +41,7 @@ export class CreateInventoryItemDto {
 
 export class UpdateInventoryItemDto extends PartialType(CreateInventoryItemDto) {}
 
-export class InventoryQueryDto {
+export class InventoryQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

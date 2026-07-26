@@ -43,7 +43,11 @@ export class InventoryCatalogueService {
     });
   }
 
-  list(groupId: string, query: InventoryQueryDto) {
+  async list(groupId: string, query: InventoryQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
     const stockFilter: Prisma.InventoryBatchWhereInput = {
       ...(query.locationId && { locationId: query.locationId }),
       ...(query.holderId && { holderId: query.holderId }),
@@ -52,31 +56,43 @@ export class InventoryCatalogueService {
       ...(query.locationId && { locationId: query.locationId }),
       ...(query.holderId && { holderId: query.holderId }),
     };
-    return this.prisma.inventoryItem.findMany({
-      where: {
-        groupId,
-        archivedAt: null,
-        ...(query.category && { category: query.category }),
-        ...(query.search && { name: { contains: query.search } }),
-        ...((query.locationId || query.holderId) && {
-          OR: [
-            { batches: { some: stockFilter } },
-            { assets: { some: assetFilter } },
-          ],
-        }),
-      },
-      include: {
-        batches: {
-          where: stockFilter,
-          include: { location: true, holder: { select: { id: true, name: true } } },
+    const where: Prisma.InventoryItemWhereInput = {
+      groupId,
+      archivedAt: null,
+      ...(query.category && { category: query.category }),
+      ...(query.search && { name: { contains: query.search } }),
+      ...((query.locationId || query.holderId) && {
+        OR: [
+          { batches: { some: stockFilter } },
+          { assets: { some: assetFilter } },
+        ],
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryItem.findMany({
+        where,
+        include: {
+          batches: {
+            where: stockFilter,
+            include: { location: true, holder: { select: { id: true, name: true } } },
+          },
+          assets: {
+            where: assetFilter,
+            include: { location: true, holder: { select: { id: true, name: true } } },
+          },
         },
-        assets: {
-          where: assetFilter,
-          include: { location: true, holder: { select: { id: true, name: true } } },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.inventoryItem.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async getItem(groupId: string, itemId: string) {
