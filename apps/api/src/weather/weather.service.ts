@@ -15,6 +15,7 @@ import {
 import { createHash } from 'crypto';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { ReviewWeatherSuggestionDto, UpdateWeatherRuleDto } from './dto';
 import { OpenMeteoClient } from './open-meteo.client';
 import { WeatherRulesService } from './weather-rules.service';
@@ -25,6 +26,7 @@ export class WeatherService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly client: OpenMeteoClient,
     private readonly rules: WeatherRulesService,
   ) {}
@@ -309,6 +311,9 @@ export class WeatherService {
 
   @Cron(CronExpression.EVERY_HOUR)
   async refreshUpcomingOutdoorEvents() {
+    const locked = await this.redis.tryLock('cron:weather-refresh', 3500);
+    if (!locked) return;
+
     const now = new Date();
     const horizon = new Date(now.getTime() + 16 * 24 * 60 * 60 * 1000);
     const activities = await this.prisma.groupActivity.findMany({

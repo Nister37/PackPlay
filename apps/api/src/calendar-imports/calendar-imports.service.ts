@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ActivityType, CalendarProvider, GroupActivityStatus } from '@prisma/client';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { CalendarParserService, ParsedCalendarEvent } from './calendar-parser.service';
 import { CalendarSecurityService } from './calendar-security.service';
 import { ConnectCalendarFeedDto } from './dto';
@@ -11,6 +12,7 @@ import { ConnectCalendarFeedDto } from './dto';
 export class CalendarImportsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly parser: CalendarParserService,
     private readonly security: CalendarSecurityService,
   ) {}
@@ -125,6 +127,9 @@ export class CalendarImportsService {
 
   @Cron(CronExpression.EVERY_HOUR)
   async syncActiveFeeds() {
+    const locked = await this.redis.tryLock('cron:calendar-sync', 3500);
+    if (!locked) return;
+
     const feeds = await this.prisma.calendarFeed.findMany({
       where: { active: true },
       select: { id: true, groupId: true },
