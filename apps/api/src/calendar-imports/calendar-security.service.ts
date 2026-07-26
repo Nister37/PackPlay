@@ -166,11 +166,11 @@ export class CalendarSecurityService {
   }
 
   private key() {
-    const secret =
-      this.config.get<string>('CALENDAR_FEED_ENCRYPTION_KEY') ??
-      this.config.get<string>('JWT_SECRET');
+    const secret = this.config.get<string>('CALENDAR_FEED_ENCRYPTION_KEY');
     if (!secret || secret.length < 16) {
-      throw new ServiceUnavailableException('Calendar feed encryption is not configured');
+      throw new ServiceUnavailableException(
+        'CALENDAR_FEED_ENCRYPTION_KEY must be set and at least 16 characters',
+      );
     }
     return createHash('sha256').update(secret).digest();
   }

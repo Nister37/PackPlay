@@ -4,6 +4,7 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
@@ -14,13 +15,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma.service';
 
 @WebSocketGateway({
-  cors: {
-    origin: process.env['CORS_ORIGIN'] || 'http://localhost:4200',
-    credentials: true,
-  },
+  cors: true,
   namespace: '/packing',
 })
-export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class PackingGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
@@ -31,6 +29,14 @@ export class PackingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
+
+  afterInit(server: Server) {
+    const origin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
+    (server as any).opts.cors = {
+      origin,
+      credentials: true,
+    };
+  }
 
   async handleConnection(client: Socket) {
     try {
