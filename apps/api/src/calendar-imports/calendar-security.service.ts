@@ -48,14 +48,16 @@ export class CalendarSecurityService {
   async fetchCalendar(value: string): Promise<string> {
     let current = new URL(value);
     for (let redirect = 0; redirect <= 3; redirect += 1) {
-      await this.assertSafeUrl(current);
+      const resolvedIp = await this.assertSafeUrl(current);
+      const fetchUrl = this.buildResolvedUrl(current, resolvedIp);
       let response: Response;
       try {
-        response = await fetch(current, {
+        response = await fetch(fetchUrl, {
           redirect: 'manual',
           signal: AbortSignal.timeout(15_000),
           headers: {
             Accept: 'text/calendar, application/ics, text/plain;q=0.8',
+            Host: current.host,
           },
         });
       } catch {
@@ -97,7 +99,7 @@ export class CalendarSecurityService {
     throw new BadRequestException('Calendar feed redirect limit exceeded');
   }
 
-  private async assertSafeUrl(url: URL) {
+  private async assertSafeUrl(url: URL): Promise<string> {
     if (
       url.protocol !== 'https:' ||
       url.username ||
@@ -116,6 +118,18 @@ export class CalendarSecurityService {
         message: 'Calendar feed host is not publicly routable',
       });
     }
+    return addresses[0].address;
+  }
+
+  /**
+   * Build a URL that connects directly to the resolved IP, bypassing a second
+   * DNS lookup. IPv6 addresses are wrapped in brackets.
+   */
+  private buildResolvedUrl(original: URL, resolvedIp: string): URL {
+    const ipHost = isIP(resolvedIp) === 6 ? `[${resolvedIp}]` : resolvedIp;
+    const resolved = new URL(original.href);
+    resolved.hostname = ipHost;
+    return resolved;
   }
 
   private isPrivateAddress(address: string): boolean {
