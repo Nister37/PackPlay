@@ -33,7 +33,13 @@ export class EquipmentCatalogueService {
     });
     const personalized = preference?.personalizedRanking ?? true;
     const candidates = await this.prisma.equipmentCatalogueItem.findMany({
-      where: { active: true },
+      where: {
+        active: true,
+        OR: [
+          { canonicalName: { contains: normalized, mode: 'insensitive' } },
+          { aliases: { some: { alias: { contains: normalized, mode: 'insensitive' } } } },
+        ],
+      },
       include: {
         aliases: true,
         teamUsage:
@@ -41,7 +47,7 @@ export class EquipmentCatalogueService {
             ? { where: { groupId: query.groupId } }
             : false,
       },
-      take: 500,
+      take: 100,
     });
 
     return candidates
