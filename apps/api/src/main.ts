@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { createOpenApiDocument } from './openapi.config';
@@ -21,6 +22,9 @@ async function bootstrap() {
     origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:4200'),
     credentials: true,
   });
+
+  // Explicit body size limit
+  app.use(express.json({ limit: '1mb' }));
 
   app.useGlobalPipes(
     new ValidationPipe({
