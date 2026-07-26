@@ -317,7 +317,7 @@ export class ReadinessService {
       risks,
     };
 
-    await this.redis.set(cacheKey, result, 30);
+    await this.redis.set(cacheKey, result, 120);
 
     return result;
   }

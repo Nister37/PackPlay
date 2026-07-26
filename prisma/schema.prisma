@@ -412,6 +412,7 @@ model GroupActivity {
   @@index([groupId, createdAt])
   @@index([groupId, status, date])
   @@index([groupId, venueName])
+  @@index([environment, status, date])
   @@map("group_activities")
 }
 
@@ -940,6 +941,7 @@ model SharedResponsibility {
 
   @@unique([sharedItemId, userId])
   @@index([userId, status])
+  @@index([sharedItemId, status])
   @@map("shared_responsibilities")
 }
 
