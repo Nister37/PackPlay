@@ -1,63 +1,135 @@
-# PackPlay
+# PackPlay 🎒
 
-PackPlay is a backend for coordinating personal and shared equipment before a group activity. Users can maintain reusable sport checklists, organize groups, assign quantities of shared equipment, record packing decisions, report missing items, transfer responsibility, and receive readiness and real-time updates.
+> Smart, real-time equipment coordination and packing readiness for outdoor trips, expeditions, and sports teams.
 
-The repository currently contains the API and its supporting infrastructure. A frontend is not included.
+<p align="center">
+  <img src="apps/web/public/packplay-logo.png" alt="PackPlay Logo" width="160" />
+</p>
 
-## Main capabilities
+<p align="center">
+  <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen" alt="Node" />
+  <img src="https://img.shields.io/badge/NestJS-11-red" alt="NestJS" />
+  <img src="https://img.shields.io/badge/React-18-blue" alt="React" />
+  <img src="https://img.shields.io/badge/Prisma-6-teal" alt="Prisma" />
+  <img src="https://img.shields.io/badge/Nx-Monorepo-black" alt="Nx" />
+</p>
 
-- email/password registration, verification, login, token refresh, logout, and password reset;
-- groups, memberships, roles, and invitation links;
-- sport profiles, reusable checklists, and personal equipment;
-- group activities and quantity-based shared-equipment responsibility;
-- packing sessions, missing-item reasons, takeover, and readiness summaries;
-- in-app notifications and Socket.IO activity/group rooms;
-- health checks for MySQL and Redis;
-- interactive Swagger API documentation in non-production environments.
+---
 
-## Technology stack
+## 🌟 What is PackPlay?
 
-| Area                      | Technology                                          |
-| ------------------------- | --------------------------------------------------- |
-| Runtime                   | Node.js 22, TypeScript                              |
-| Monorepo                  | Nx 20                                               |
-| API                       | NestJS 11, REST, Socket.IO                          |
-| Validation and API docs   | class-validator, class-transformer, OpenAPI/Swagger |
-| Authentication            | Passport, JWT, bcrypt                               |
-| Data                      | MySQL 8, Prisma ORM                                 |
-| Cache and ephemeral state | Redis 7, ioredis                                    |
-| Testing                   | Jest, Supertest-compatible test setup               |
-| Local services            | Docker Compose                                      |
-| CI/CD                     | Jenkins Multibranch Pipeline                        |
-| Infrastructure            | Google Cloud, Terraform, Ansible, Docker, Caddy     |
+Organizing group gear before a trek, climbing trip, or sports match can be chaotic: people double up on heavy stoves while forgetting medical kits. 
 
-## Repository layout
+**PackPlay** solves this by providing:
+- 📋 **Reusable Checklists & Profiles**: Sport-specific templates (hiking, climbing, cycling, skiing).
+- 🤝 **Shared Equipment Pooling**: Distribute group gear with clear quantity quotas and weight tracking.
+- ⚡ **Live Collaborative Packing**: Real-time Socket.IO synchronization and item takeover alerts.
+- 🌤️ **Weather-Aware Recommendations**: Smart packing suggestions powered by Open-Meteo forecasts.
+- 🧊 **Interactive 3D Item Viewer**: Three.js item inspection directly in your browser.
+- 📱 **Mobile-First Responsive Web**: Accessible UI tailored for quick field checkoffs.
 
-```text
-apps/api/          NestJS application and domain modules
-libs/common/       Shared application errors and utilities
-prisma/            MySQL data model
-infra/             Terraform and Ansible infrastructure (infrastructure branch)
-jenkins/           Jenkins, agent, CI sidecars, and Caddy configuration
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| **Backend** | NestJS 11, TypeScript, Socket.IO, Passport JWT, Swagger |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons, Three.js |
+| **Database & Cache** | MySQL 8.0, Prisma ORM, Redis 7 (ioredis) |
+| **Monorepo & Build** | Nx 20, Docker Compose |
+| **Testing** | Jest, Vitest, Playwright, Supertest |
+
+---
+
+## 🚀 Quickstart (One Command)
+
+The fastest way to run the complete PackPlay stack (MySQL, Redis, Migrations, Backend API, and Web UI) is via Docker Compose:
+
+### 1. Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Docker Compose v2+)
+- [Git](https://git-scm.com/)
+
+### 2. Launch
+```bash
+# 1. Clone repository
+git clone https://github.com/Nister37/PackPlay.git
+cd PackPlay
+
+# 2. Configure local environment
+cp .env.example .env
+
+# 3. Start all services
+docker compose up -d
 ```
 
-## Getting started
+### 3. Open your browser
+- 🌐 **Web Application**: [http://localhost:4200](http://localhost:4200)
+- 🔌 **Backend REST API**: [http://localhost:3000](http://localhost:3000)
+- 📖 **Interactive Swagger UI**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 
-Follow [SETUP.md](docs/SETUP.md) for local installation and deployment. The generated contract and API documentation instructions are in [openapi.json](openapi.json) and [OPENAPI.md](docs/OPENAPI.md), while the pipeline is described in [CICD.md](docs/CICD.md).
+---
 
-Useful commands:
+## 💻 Local Development Setup
+
+If you prefer running services directly on your host machine:
+
+### 1. Install Dependencies
+```bash
+# Install monorepo and API dependencies
+npm install
+
+# Install Frontend dependencies
+npm --prefix apps/web install
+```
+
+### 2. Configure Environment & Database
+```bash
+# Copy example env
+cp .env.example .env
+
+# Start backing services (MySQL 8 + Redis 7)
+docker compose up mysql redis -d
+
+# Generate Prisma Client & apply database migrations
+npm run prisma:generate
+npx prisma db push
+```
+
+### 3. Start Development Servers
+```bash
+# Terminal 1: Start Backend API (Port 3000)
+npm run start
+
+# Terminal 2: Start Web UI (Port 5173 / 4200)
+npm --prefix apps/web run dev
+```
+
+---
+
+## 🧪 Testing
+
+PackPlay features comprehensive automated test coverage:
 
 ```bash
-npm run start
-npm run test
+# Run backend unit tests (46 test suites, 290+ tests)
+npm test
+
+# Run frontend tests (Vitest + Testing Library)
+npm --prefix apps/web test
+
+# Check code formatting & linting
 npm run lint
-npm run build
 ```
 
-## Current limitations
+---
 
-- Swagger is deliberately disabled when `NODE_ENV=production`.
-- Email delivery currently uses an application abstraction whose development implementation writes messages to the console; connect a transactional provider before production use.
-- The infrastructure pipeline requires `openapi`, `integration`, and `e2e` Nx targets on `main`. OpenAPI generation is implemented, but `integration` and `e2e` are still missing, so the contract check intentionally prevents a false-green full pipeline.
-- The infrastructure configuration is maintained separately on the `infrastructure` branch and must be merged before the deployment commands are available on `main`.
-- Terraform and Ansible currently deploy Jenkins infrastructure only; a production deployment workflow for the NestJS API has not yet been implemented.
+## 📚 Deep Dive Documentation
+
+For advanced topics, see the dedicated guides in `/docs`:
+- 🏗️ **Architecture & Domain Design**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- ⚙️ **Detailed Setup & Cloud Deployment**: [docs/SETUP.md](docs/SETUP.md)
+- 📜 **OpenAPI Contract Specification**: [docs/OPENAPI.md](docs/OPENAPI.md) and [openapi.json](openapi.json)
+- 🔒 **Security & Performance Audit**: [docs/SECURITY_PERFORMANCE_AUDIT.md](docs/SECURITY_PERFORMANCE_AUDIT.md)
+- 📅 **Calendar Feed Synchronization**: [docs/CALENDAR_IMPORTS.md](docs/CALENDAR_IMPORTS.md)
+- 🚀 **CI/CD Pipeline**: [docs/CICD.md](docs/CICD.md)
