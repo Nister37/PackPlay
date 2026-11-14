@@ -410,7 +410,32 @@
     },
     "/auth/sso/google/start": {
       "post": {
-        "operationId": "SsoController_start",
+        "operationId": "SsoController_start[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSsoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Start Google sign-in with PKCE",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/google/start": {
+      "post": {
+        "operationId": "SsoController_start[1]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -435,7 +460,37 @@
     },
     "/auth/sso/google/link/start": {
       "post": {
-        "operationId": "SsoController_startLink",
+        "operationId": "SsoController_startLink[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSsoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start linking Google to the signed-in account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/google/link/start": {
+      "post": {
+        "operationId": "SsoController_startLink[1]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -465,11 +520,11 @@
     },
     "/auth/sso/google/callback": {
       "get": {
-        "operationId": "SsoController_callback",
+        "operationId": "SsoController_callback[0]",
         "parameters": [
           {
             "name": "code",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -477,7 +532,71 @@
           },
           {
             "name": "state",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authuser",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prompt",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hd",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_state",
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -485,6 +604,126 @@
           },
           {
             "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accept",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Complete Google sign-in or account linking",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/google/callback": {
+      "get": {
+        "operationId": "SsoController_callback[1]",
+        "parameters": [
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authuser",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prompt",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hd",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accept",
             "required": true,
             "in": "header",
             "schema": {
@@ -505,7 +744,7 @@
     },
     "/auth/sso/methods": {
       "get": {
-        "operationId": "SsoController_methods",
+        "operationId": "SsoController_methods[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -523,9 +762,225 @@
         ]
       }
     },
+    "/api/auth/sso/methods": {
+      "get": {
+        "operationId": "SsoController_methods[1]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List connected sign-in methods",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/connect-requests": {
+      "get": {
+        "operationId": "SsoController_listConnectRequests[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List incoming SSO connect requests for receiver",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/connect-requests": {
+      "get": {
+        "operationId": "SsoController_listConnectRequests[1]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List incoming SSO connect requests for receiver",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/connect-requests/{id}/accept": {
+      "post": {
+        "operationId": "SsoController_acceptConnectRequest[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept incoming SSO connect request",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/connect-requests/{id}/accept": {
+      "post": {
+        "operationId": "SsoController_acceptConnectRequest[1]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept incoming SSO connect request",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/connect-requests/{id}/decline": {
+      "post": {
+        "operationId": "SsoController_declineConnectRequest[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Decline incoming SSO connect request",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/connect-requests/{id}/decline": {
+      "post": {
+        "operationId": "SsoController_declineConnectRequest[1]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Decline incoming SSO connect request",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/sso/request-connect-to-account": {
+      "post": {
+        "operationId": "SsoController_requestConnectToAccount[0]",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request connection to another account by email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/request-connect-to-account": {
+      "post": {
+        "operationId": "SsoController_requestConnectToAccount[1]",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request connection to another account by email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/auth/sso/{provider}": {
       "delete": {
-        "operationId": "SsoController_unlink",
+        "operationId": "SsoController_unlink[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -540,6 +995,112 @@
         "summary": "Disconnect an SSO sign-in method",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/auth/sso/{provider}": {
+      "delete": {
+        "operationId": "SsoController_unlink[1]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disconnect an SSO sign-in method",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_listNotifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List user notifications (paginated)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notifications"
         ]
       }
     },
@@ -1662,6 +2223,27 @@
             }
           },
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
             "name": "status",
             "required": false,
             "in": "query",
@@ -1797,6 +2379,78 @@
           }
         ],
         "summary": "Update an event and its venue or lifecycle details",
+        "tags": [
+          "Group Activities"
+        ]
+      },
+      "delete": {
+        "operationId": "GroupActivitiesController_deleteActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete an event and its manifest items",
+        "tags": [
+          "Group Activities"
+        ]
+      }
+    },
+    "/groups/{groupId}/activities/{activityId}/broadcast-reminder": {
+      "post": {
+        "operationId": "GroupActivitiesController_broadcastGearReminder",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Broadcast gear reminder to squad members for an event",
         "tags": [
           "Group Activities"
         ]
@@ -2353,92 +3007,6 @@
         ]
       }
     },
-    "/notifications": {
-      "get": {
-        "operationId": "NotificationsController_listNotifications",
-        "parameters": [
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List user notifications (paginated)",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/notifications/{id}/read": {
-      "patch": {
-        "operationId": "NotificationsController_markAsRead",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark a notification as read",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/notifications/read-all": {
-      "patch": {
-        "operationId": "NotificationsController_markAllAsRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark all notifications as read",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
     "/groups/{groupId}/preparation-templates": {
       "get": {
         "operationId": "PreparationTemplatesController_list",
@@ -2816,7 +3384,37 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Role created"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2825,6 +3423,71 @@
           }
         ],
         "summary": "Create an event-specific role with requirements",
+        "tags": [
+          "Event Members"
+        ]
+      },
+      "get": {
+        "operationId": "EventMembersController_listRoles",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of event roles"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List roles defined for the event",
         "tags": [
           "Event Members"
         ]
@@ -2871,7 +3534,37 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Role assigned"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role or activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2924,7 +3617,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Assignment removed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Assignment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2971,7 +3694,37 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Member preferences updated"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3008,7 +3761,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Event members list"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3045,7 +3828,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Personal requirements"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3080,6 +3893,27 @@
             }
           },
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
             "name": "memberId",
             "required": false,
             "in": "query",
@@ -3100,7 +3934,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Paginated activity log"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3111,201 +3975,6 @@
         "summary": "List the append-only event activity log",
         "tags": [
           "Event Members"
-        ]
-      }
-    },
-    "/equipment-catalogue/search": {
-      "get": {
-        "operationId": "EquipmentCatalogueController_search",
-        "parameters": [
-          {
-            "name": "query",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "minLength": 1,
-              "maxLength": 100,
-              "type": "string"
-            }
-          },
-          {
-            "name": "sport",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "maxLength": 100,
-              "type": "string"
-            }
-          },
-          {
-            "name": "role",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "maxLength": 100,
-              "type": "string"
-            }
-          },
-          {
-            "name": "groupId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 50,
-              "default": 15,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Rank exact, alias, prefix, and fuzzy equipment matches",
-        "tags": [
-          "Equipment Catalogue"
-        ]
-      }
-    },
-    "/equipment-catalogue/bootstrap": {
-      "get": {
-        "operationId": "EquipmentCatalogueController_bootstrap",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Download deterministic catalogue data for local autocomplete",
-        "tags": [
-          "Equipment Catalogue"
-        ]
-      }
-    },
-    "/equipment-catalogue/preferences/me": {
-      "get": {
-        "operationId": "EquipmentCatalogueController_preference",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Equipment Catalogue"
-        ]
-      },
-      "patch": {
-        "operationId": "EquipmentCatalogueController_updatePreference",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSuggestionPreferenceDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Equipment Catalogue"
-        ]
-      }
-    },
-    "/equipment-catalogue/preferences/me/personalization": {
-      "delete": {
-        "operationId": "EquipmentCatalogueController_clear",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Disable and clear personalized ranking controls",
-        "tags": [
-          "Equipment Catalogue"
-        ]
-      }
-    },
-    "/activities/{activityId}/smart-drafts/accept": {
-      "post": {
-        "description": "This endpoint accepts structured items only. Browser AI prompts and raw model output are never accepted or stored.",
-        "operationId": "SmartDraftsController_accept",
-        "parameters": [
-          {
-            "name": "activityId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptSmartDraftDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Persist only explicitly accepted browser-generated draft items",
-        "tags": [
-          "Smart Add Drafts"
         ]
       }
     },
@@ -3541,7 +4210,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Group readiness summary"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3570,7 +4269,27 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Personal readiness summary"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Packing session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3594,6 +4313,27 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
             }
           },
           {
@@ -3633,7 +4373,27 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Paginated inventory items"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3670,7 +4430,27 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Item created"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3707,7 +4487,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Inventory item detail"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3752,7 +4562,37 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Item updated"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3786,7 +4626,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Item archived"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3832,7 +4702,37 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Batch created"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3878,7 +4778,37 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Asset created"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3906,7 +4836,27 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "List of storage locations"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3944,7 +4894,27 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Location created"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4264,6 +5234,27 @@
             }
           },
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
             "name": "batchId",
             "required": false,
             "in": "query",
@@ -4360,6 +5351,27 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
             }
           },
           {
@@ -4545,6 +5557,201 @@
         ]
       }
     },
+    "/equipment-catalogue/search": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_search",
+        "parameters": [
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sport",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rank exact, alias, prefix, and fuzzy equipment matches",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/bootstrap": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_bootstrap",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download deterministic catalogue data for local autocomplete",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/preferences/me": {
+      "get": {
+        "operationId": "EquipmentCatalogueController_preference",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      },
+      "patch": {
+        "operationId": "EquipmentCatalogueController_updatePreference",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSuggestionPreferenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/equipment-catalogue/preferences/me/personalization": {
+      "delete": {
+        "operationId": "EquipmentCatalogueController_clear",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disable and clear personalized ranking controls",
+        "tags": [
+          "Equipment Catalogue"
+        ]
+      }
+    },
+    "/activities/{activityId}/smart-drafts/accept": {
+      "post": {
+        "description": "This endpoint accepts structured items only. Browser AI prompts and raw model output are never accepted or stored.",
+        "operationId": "SmartDraftsController_accept",
+        "parameters": [
+          {
+            "name": "activityId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptSmartDraftDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Persist only explicitly accepted browser-generated draft items",
+        "tags": [
+          "Smart Add Drafts"
+        ]
+      }
+    },
     "/groups/{groupId}/activities/{activityId}/weather": {
       "get": {
         "operationId": "WeatherController_get",
@@ -4568,7 +5775,37 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Weather snapshot for the activity"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a group member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4604,7 +5841,37 @@
         ],
         "responses": {
           "201": {
-            "description": ""
+            "description": "Forecast refreshed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Activity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4659,7 +5926,37 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Suggestion accepted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Suggestion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4703,7 +6000,37 @@
         ],
         "responses": {
           "201": {
-            "description": ""
+            "description": "Suggestion dismissed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Suggestion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4749,7 +6076,37 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Rule updated"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5000,6 +6357,136 @@
           "Calendar imports"
         ]
       }
+    },
+    "/ai/gemma/parse": {
+      "post": {
+        "operationId": "GemmaController_parseGearList[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseGearDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Parse unstructured sports text into gear items using Gemma",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
+    },
+    "/api/ai/gemma/parse": {
+      "post": {
+        "operationId": "GemmaController_parseGearList[1]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseGearDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Parse unstructured sports text into gear items using Gemma",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
+    },
+    "/ai/gemma/suggest": {
+      "post": {
+        "operationId": "GemmaController_suggestEventGear[0]",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Recommend event equipment using Gemma AI based on sport and weather",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
+    },
+    "/api/ai/gemma/suggest": {
+      "post": {
+        "operationId": "GemmaController_suggestEventGear[1]",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Recommend event equipment using Gemma AI based on sport and weather",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
+    },
+    "/ai/gemma/chat": {
+      "post": {
+        "operationId": "GemmaController_chatAdvice[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatAdviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Interactive sports logistics advice powered by Gemma",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
+    },
+    "/api/ai/gemma/chat": {
+      "post": {
+        "operationId": "GemmaController_chatAdvice[1]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatAdviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Interactive sports logistics advice powered by Gemma",
+        "tags": [
+          "Gemma AI"
+        ]
+      }
     }
   },
   "info": {
@@ -5152,6 +6639,11 @@
             "type": "string",
             "description": "Sport type",
             "example": "football"
+          },
+          "maxMembers": {
+            "type": "number",
+            "description": "Maximum squad members capacity",
+            "example": 25
           }
         },
         "required": [
@@ -5176,6 +6668,11 @@
             "type": "string",
             "description": "Sport type",
             "example": "football"
+          },
+          "maxMembers": {
+            "type": "number",
+            "description": "Maximum squad members capacity",
+            "example": 25
           }
         }
       },
@@ -5582,35 +7079,126 @@
       },
       "CreateSharedItemDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "requiredQuantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isMandatory": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "catalogueItemId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name"
+        ]
       },
       "UpdateSharedItemDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "requiredQuantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isMandatory": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          }
+        }
       },
       "ClaimResponsibilityDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
       },
       "PackResponsibilityDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
       },
       "ExtraResponsibilityDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
       },
       "ReportMissingDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "FORGOT",
+              "COULD_NOT_BRING",
+              "REPLACEMENT_ARRANGED"
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "TakeOverDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
       },
       "TransferResponsibilityDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "targetUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "targetUserId"
+        ]
       },
       "CreateTemplateFromEventDto": {
         "type": "object",
@@ -5799,6 +7387,23 @@
           "name"
         ]
       },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
       "AssignEventRoleDto": {
         "type": "object",
         "properties": {
@@ -5832,77 +7437,6 @@
             "format": "date-time"
           }
         }
-      },
-      "UpdateSuggestionPreferenceDto": {
-        "type": "object",
-        "properties": {
-          "personalizedRanking": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "personalizedRanking"
-        ]
-      },
-      "AcceptedSmartDraftItemDto": {
-        "type": "object",
-        "properties": {
-          "target": {
-            "type": "string",
-            "enum": [
-              "PERSONAL",
-              "SHARED"
-            ]
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "quantity": {
-            "type": "number",
-            "minimum": 1,
-            "default": 1
-          },
-          "category": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "isMandatory": {
-            "type": "boolean",
-            "default": true
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 1000
-          },
-          "catalogueItemId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "checklistId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Required for PERSONAL items"
-          }
-        },
-        "required": [
-          "target",
-          "name"
-        ]
-      },
-      "AcceptSmartDraftDto": {
-        "type": "object",
-        "properties": {
-          "acceptedItems": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AcceptedSmartDraftItemDto"
-            }
-          }
-        },
-        "required": [
-          "acceptedItems"
-        ]
       },
       "StartPackingSessionDto": {
         "type": "object",
@@ -6269,6 +7803,77 @@
           }
         }
       },
+      "UpdateSuggestionPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "personalizedRanking": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "personalizedRanking"
+        ]
+      },
+      "AcceptedSmartDraftItemDto": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "PERSONAL",
+              "SHARED"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isMandatory": {
+            "type": "boolean",
+            "default": true
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "catalogueItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "checklistId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for PERSONAL items"
+          }
+        },
+        "required": [
+          "target",
+          "name"
+        ]
+      },
+      "AcceptSmartDraftDto": {
+        "type": "object",
+        "properties": {
+          "acceptedItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptedSmartDraftItemDto"
+            }
+          }
+        },
+        "required": [
+          "acceptedItems"
+        ]
+      },
       "ReviewWeatherSuggestionDto": {
         "type": "object",
         "properties": {
@@ -6371,6 +7976,14 @@
           "url",
           "name"
         ]
+      },
+      "ParseGearDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ChatAdviceDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }
