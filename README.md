@@ -1,4 +1,4 @@
-# PackPlay 🎒
+# PackPlay
 
 > Smart, real-time equipment coordination and packing readiness for outdoor trips, expeditions, and sports teams.
 
@@ -16,21 +16,21 @@
 
 ---
 
-## 🌟 What is PackPlay?
+## Overview
 
-Organizing group gear before a trek, climbing trip, or sports match can be chaotic: people double up on heavy stoves while forgetting medical kits. 
+Organizing group gear before a trek, climbing trip, or sports match can be chaotic: people double up on heavy stoves while forgetting medical kits.
 
-**PackPlay** solves this by providing:
-- 📋 **Reusable Checklists & Profiles**: Sport-specific templates (hiking, climbing, cycling, skiing).
-- 🤝 **Shared Equipment Pooling**: Distribute group gear with clear quantity quotas and weight tracking.
-- ⚡ **Live Collaborative Packing**: Real-time Socket.IO synchronization and item takeover alerts.
-- 🌤️ **Weather-Aware Recommendations**: Smart packing suggestions powered by Open-Meteo forecasts.
-- 🧊 **Interactive 3D Item Viewer**: Three.js item inspection directly in your browser.
-- 📱 **Mobile-First Responsive Web**: Accessible UI tailored for quick field checkoffs.
+**PackPlay** provides:
+- **Reusable Checklists & Profiles**: Sport-specific templates for hiking, climbing, cycling, and skiing.
+- **Shared Equipment Pooling**: Distribute group gear with clear quantity quotas and weight tracking.
+- **Live Collaborative Packing**: Real-time Socket.IO synchronization and item takeover alerts.
+- **Weather-Aware Recommendations**: Smart packing suggestions powered by Open-Meteo forecasts.
+- **Interactive 3D Item Viewer**: Three.js item inspection directly in your browser.
+- **Mobile-First Responsive Web**: Accessible UI tailored for quick field checkoffs.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technologies |
 |---|---|
@@ -42,13 +42,13 @@ Organizing group gear before a trek, climbing trip, or sports match can be chaot
 
 ---
 
-## 🚀 Quickstart (One Command)
+## Quickstart (Docker Compose)
 
 The fastest way to run the complete PackPlay stack (MySQL, Redis, Migrations, Backend API, and Web UI) is via Docker Compose:
 
 ### 1. Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Docker Compose v2+)
-- [Git](https://git-scm.com/)
+- Docker Desktop (Docker Compose v2+)
+- Git
 
 ### 2. Launch
 ```bash
@@ -63,14 +63,14 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### 3. Open your browser
-- 🌐 **Web Application**: [http://localhost:4200](http://localhost:4200)
-- 🔌 **Backend REST API**: [http://localhost:3000](http://localhost:3000)
-- 📖 **Interactive Swagger UI**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+### 3. Service URLs
+- **Web Application**: [http://localhost:4200](http://localhost:4200)
+- **Backend REST API**: [http://localhost:3000](http://localhost:3000)
+- **Interactive Swagger UI**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 
 ---
 
-## 💻 Local Development Setup
+## Local Development Setup
 
 If you prefer running services directly on your host machine:
 
@@ -107,7 +107,7 @@ npm --prefix apps/web run dev
 
 ---
 
-## 🧪 Testing
+## Testing
 
 PackPlay features comprehensive automated test coverage:
 
@@ -124,12 +124,12 @@ npm run lint
 
 ---
 
-## 📚 Deep Dive Documentation
+## Deep Dive Documentation
 
 For advanced topics, see the dedicated guides in `/docs`:
-- 🏗️ **Architecture & Domain Design**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- ⚙️ **Detailed Setup & Cloud Deployment**: [docs/SETUP.md](docs/SETUP.md)
-- 📜 **OpenAPI Contract Specification**: [docs/OPENAPI.md](docs/OPENAPI.md) and [openapi.json](openapi.json)
-- 🔒 **Security & Performance Audit**: [docs/SECURITY_PERFORMANCE_AUDIT.md](docs/SECURITY_PERFORMANCE_AUDIT.md)
-- 📅 **Calendar Feed Synchronization**: [docs/CALENDAR_IMPORTS.md](docs/CALENDAR_IMPORTS.md)
-- 🚀 **CI/CD Pipeline**: [docs/CICD.md](docs/CICD.md)
+- **Architecture & Domain Design**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Detailed Setup & Cloud Deployment**: [docs/SETUP.md](docs/SETUP.md)
+- **OpenAPI Contract Specification**: [docs/OPENAPI.md](docs/OPENAPI.md) and [openapi.json](openapi.json)
+- **Security & Performance Audit**: [docs/SECURITY_PERFORMANCE_AUDIT.md](docs/SECURITY_PERFORMANCE_AUDIT.md)
+- **Calendar Feed Synchronization**: [docs/CALENDAR_IMPORTS.md](docs/CALENDAR_IMPORTS.md)
+- **CI/CD Pipeline**: [docs/CICD.md](docs/CICD.md)
