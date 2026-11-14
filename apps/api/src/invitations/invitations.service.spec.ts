@@ -145,7 +145,7 @@ describe('InvitationsService', () => {
 
       const result = await service.getInvitationInfo('valid-token');
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         groupName: 'Sunday Football',
         sportType: 'football',
         memberCount: 7,

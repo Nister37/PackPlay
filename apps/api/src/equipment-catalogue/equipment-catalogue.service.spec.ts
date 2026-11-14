@@ -88,4 +88,78 @@ describe('EquipmentCatalogueService', () => {
 
     expect(prisma.equipmentCatalogueItem.findMany).not.toHaveBeenCalled();
   });
+
+  describe('ItemCreatedEvent subscription', () => {
+    it('records team usage when an item with catalogueItemId is created', async () => {
+      const { EventBusService } = await import('../common/event-bus.service');
+      const { ItemCreatedEvent } = await import('../common/domain-events');
+      const eventBus = new EventBusService();
+
+      const module = await Test.createTestingModule({
+        providers: [
+          EquipmentCatalogueService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: EventBusService, useValue: eventBus },
+        ],
+      }).compile();
+
+      const subService = module.get(EquipmentCatalogueService);
+      subService.onModuleInit();
+
+      prisma.teamEquipmentUsage.upsert.mockResolvedValue({});
+
+      eventBus.publish(
+        new ItemCreatedEvent({
+          activityId: 'act-1',
+          itemId: 'item-1',
+          groupId: 'grp-1',
+          catalogueItemId: 'cat-item-1',
+          createdById: 'user-1',
+        }),
+      );
+
+      // Allow microtask to process
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(prisma.teamEquipmentUsage.upsert).toHaveBeenCalledWith({
+        where: { groupId_catalogueItemId: { groupId: 'grp-1', catalogueItemId: 'cat-item-1' } },
+        create: { groupId: 'grp-1', catalogueItemId: 'cat-item-1', useCount: 1 },
+        update: { useCount: { increment: 1 }, lastUsedAt: expect.any(Date) },
+      });
+
+      subService.onModuleDestroy();
+    });
+
+    it('does not record team usage when catalogueItemId is missing', async () => {
+      const { EventBusService } = await import('../common/event-bus.service');
+      const { ItemCreatedEvent } = await import('../common/domain-events');
+      const eventBus = new EventBusService();
+
+      const module = await Test.createTestingModule({
+        providers: [
+          EquipmentCatalogueService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: EventBusService, useValue: eventBus },
+        ],
+      }).compile();
+
+      const subService = module.get(EquipmentCatalogueService);
+      subService.onModuleInit();
+
+      eventBus.publish(
+        new ItemCreatedEvent({
+          activityId: 'act-1',
+          itemId: 'item-1',
+          groupId: 'grp-1',
+          createdById: 'user-1',
+        }),
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(prisma.teamEquipmentUsage.upsert).not.toHaveBeenCalled();
+      subService.onModuleDestroy();
+    });
+  });
 });
+

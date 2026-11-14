@@ -214,4 +214,45 @@ describe('GroupsService', () => {
       });
     });
   });
+
+  describe('getMember', () => {
+    it('returns member by groupId and userId', async () => {
+      const mockMember = { id: 'm-1', groupId: 'g1', userId: 'u1', role: GroupMemberRole.MEMBER };
+      prisma.groupMember.findUnique.mockResolvedValue(mockMember);
+
+      const result = await service.getMember('g1', 'u1');
+      expect(result).toEqual(mockMember);
+      expect(prisma.groupMember.findUnique).toHaveBeenCalledWith({
+        where: { groupId_userId: { groupId: 'g1', userId: 'u1' } },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+    });
+  });
+
+  describe('canUserManageGroup', () => {
+    it('returns true if user is OWNER', async () => {
+      prisma.groupMember.findUnique.mockResolvedValue({ role: GroupMemberRole.OWNER });
+      const result = await service.canUserManageGroup('g1', 'u1');
+      expect(result).toBe(true);
+    });
+
+    it('returns true if user is ADMIN', async () => {
+      prisma.groupMember.findUnique.mockResolvedValue({ role: GroupMemberRole.ADMIN });
+      const result = await service.canUserManageGroup('g1', 'u1');
+      expect(result).toBe(true);
+    });
+
+    it('returns false if user is regular MEMBER', async () => {
+      prisma.groupMember.findUnique.mockResolvedValue({ role: GroupMemberRole.MEMBER });
+      const result = await service.canUserManageGroup('g1', 'u1');
+      expect(result).toBe(false);
+    });
+
+    it('returns false if user is not a member', async () => {
+      prisma.groupMember.findUnique.mockResolvedValue(null);
+      const result = await service.canUserManageGroup('g1', 'u1');
+      expect(result).toBe(false);
+    });
+  });
 });
+

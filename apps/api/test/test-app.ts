@@ -1,3 +1,4 @@
+process.env.CALENDAR_FEED_ENCRYPTION_KEY = process.env.CALENDAR_FEED_ENCRYPTION_KEY || 'packplay_super_secret_calendar_encryption_key_32b';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../src/app.module';

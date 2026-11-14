@@ -176,6 +176,77 @@ describe('New Modules (integration)', () => {
 
       expect(res.body).toBeDefined();
     });
+
+    it('should generate and resolve inventory QR code', async () => {
+      const qrRes = await request(app.getHttpServer())
+        .post(`/groups/${groupId}/inventory-qr`)
+        .set('Authorization', `Bearer ${owner.accessToken}`)
+        .send({ batchId })
+        .expect(201);
+
+      expect(qrRes.body.token).toBeDefined();
+      expect(qrRes.body.url).toBeDefined();
+      expect(qrRes.body.qrDataUrl).toBeDefined();
+
+      const resolveRes = await request(app.getHttpServer())
+        .get(`/inventory-qr/${qrRes.body.token}`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .expect(200);
+
+      expect(resolveRes.body.stock).toBeDefined();
+      expect(resolveRes.body.batch).toBeDefined();
+      expect(resolveRes.body.allowedActions).toBeDefined();
+    });
+  });
+
+  // ─── Event Planning: Members and Roles ─────────────────────────────────
+
+  describe('Event Members and Roles', () => {
+    let roleId: string;
+
+    it('should create an activity role', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/groups/${groupId}/activities/${activityId}/roles`)
+        .set('Authorization', `Bearer ${owner.accessToken}`)
+        .send({ name: 'Equipment Manager' })
+        .expect(201);
+
+      expect(res.body.name).toBe('Equipment Manager');
+      roleId = res.body.id;
+    });
+
+    it('should list activity roles', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/groups/${groupId}/activities/${activityId}/roles`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.some((r: any) => r.id === roleId)).toBe(true);
+    });
+
+    it('should assign role to member', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/groups/${groupId}/activities/${activityId}/roles/${roleId}/assignments`)
+        .set('Authorization', `Bearer ${owner.accessToken}`)
+        .send({ userId: member.userId })
+        .expect(201);
+
+      expect(res.body.eventRoleId).toBe(roleId);
+      expect(res.body.userId).toBe(member.userId);
+    });
+
+    it('should update member attendance', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/groups/${groupId}/activities/${activityId}/members/me`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .send({
+          attendanceStatus: 'ATTENDING',
+        })
+        .expect(200);
+
+      expect(res.body.attendanceStatus).toBe('ATTENDING');
+    });
   });
 
   // ─── Weather ───────────────────────────────────────────────────────────
