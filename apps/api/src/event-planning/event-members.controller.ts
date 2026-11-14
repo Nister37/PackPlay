@@ -51,6 +51,19 @@ export class EventMembersController {
     return this.members.createRole(groupId, activityId, dto);
   }
 
+  @Get('roles')
+  @ApiOperation({ summary: 'List roles defined for the event' })
+  @ApiResponse({ status: 200, description: 'List of event roles' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
+  @ApiResponse({ status: 403, description: 'Not a group member', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Activity not found', type: ErrorResponseDto })
+  listRoles(
+    @Param('groupId') groupId: string,
+    @Param('activityId') activityId: string,
+  ) {
+    return this.members.listRoles(groupId, activityId);
+  }
+
   @Post('roles/:roleId/assignments')
   @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
   @UseGuards(GroupRoleGuard)

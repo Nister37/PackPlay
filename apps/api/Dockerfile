@@ -22,4 +22,4 @@ RUN npx nx build api
 
 EXPOSE 3000
 
-CMD ["node", "dist/apps/api/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/apps/api/main.js"]

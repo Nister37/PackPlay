@@ -105,9 +105,19 @@ export class InvitationsService {
     this.validateInvitation(invitation);
 
     return {
+      groupId: invitation.groupId,
       groupName: invitation.group.name,
       sportType: invitation.group.sportType,
       memberCount: invitation.group._count.members,
+      expiresAt: invitation.expiresAt,
+      maxUses: invitation.maxUses,
+      useCount: invitation.useCount,
+      group: {
+        id: invitation.groupId,
+        name: invitation.group.name,
+        sport: invitation.group.sportType,
+        sportType: invitation.group.sportType,
+      },
     };
   }
 
@@ -126,7 +136,7 @@ export class InvitationsService {
       });
     }
 
-    this.validateInvitation(invitation);
+    this.validateInvitation(invitation, true);
 
     // Check if user is already a member
     const existing = await this.prisma.groupMember.findUnique({
@@ -138,6 +148,19 @@ export class InvitationsService {
         code: AppErrorCode.ALREADY_A_MEMBER,
         message: 'You are already a member of this group',
       });
+    }
+
+    // Check if group is at max members capacity
+    if ((invitation.group as any).maxMembers) {
+      const currentCount = await this.prisma.groupMember.count({
+        where: { groupId: invitation.groupId },
+      });
+      if (currentCount >= (invitation.group as any).maxMembers) {
+        throw new ConflictException({
+          code: AppErrorCode.VALIDATION_ERROR,
+          message: 'This group has reached its maximum member capacity',
+        });
+      }
     }
 
     // Consume capacity and join atomically so concurrent requests cannot exceed maxUses.
@@ -241,12 +264,15 @@ export class InvitationsService {
     return QRCode.toDataURL(url, { type: 'image/png', width: 300 });
   }
 
-  private validateInvitation(invitation: {
-    revokedAt: Date | null;
-    expiresAt: Date;
-    maxUses: number | null;
-    useCount: number;
-  }) {
+  private validateInvitation(
+    invitation: {
+      revokedAt: Date | null;
+      expiresAt: Date;
+      maxUses: number | null;
+      useCount: number;
+    },
+    isJoin = false,
+  ) {
     if (invitation.revokedAt) {
       throw new ForbiddenException({
         code: AppErrorCode.INVITATION_REVOKED,
@@ -262,6 +288,12 @@ export class InvitationsService {
     }
 
     if (invitation.maxUses !== null && invitation.useCount >= invitation.maxUses) {
+      if (isJoin) {
+        throw new ForbiddenException({
+          code: AppErrorCode.INVITATION_MAX_USES_REACHED,
+          message: 'This invitation has reached its maximum number of uses',
+        });
+      }
       throw new BadRequestException({
         code: AppErrorCode.INVITATION_MAX_USES_REACHED,
         message: 'This invitation has reached its maximum number of uses',

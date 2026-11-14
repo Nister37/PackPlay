@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+  Optional,
+} from '@nestjs/common';
+import { Subscription } from 'rxjs';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../common/prisma.service';
+import { EventBusService } from '../common/event-bus.service';
+import { ItemCreatedEvent } from '../common/domain-events';
 import {
   CatalogueQueryDto,
   UpdateSuggestionPreferenceDto,
@@ -20,8 +29,34 @@ interface RankedSuggestion {
 }
 
 @Injectable()
-export class EquipmentCatalogueService {
-  constructor(private readonly prisma: PrismaService) {}
+export class EquipmentCatalogueService implements OnModuleInit, OnModuleDestroy {
+  private subscription?: Subscription;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly eventBus?: EventBusService,
+  ) {}
+
+  onModuleInit() {
+    if (this.eventBus) {
+      this.subscription = this.eventBus
+        .ofType(ItemCreatedEvent)
+        .subscribe(async (event) => {
+          if (event.catalogueItemId) {
+            try {
+              await this.recordTeamUsage(event.groupId, event.catalogueItemId);
+            } catch {
+              // Ignore usage tracking errors in background event handler
+            }
+          }
+        });
+    }
+  }
+
+  onModuleDestroy() {
+    this.subscription?.unsubscribe();
+  }
+
 
   async search(userId: string, query: CatalogueQueryDto) {
     const normalized = this.normalize(query.query);
@@ -36,8 +71,8 @@ export class EquipmentCatalogueService {
       where: {
         active: true,
         OR: [
-          { canonicalName: { contains: normalized, mode: 'insensitive' } },
-          { aliases: { some: { alias: { contains: normalized, mode: 'insensitive' } } } },
+          { canonicalName: { contains: normalized } },
+          { aliases: { some: { alias: { contains: normalized } } } },
         ],
       },
       include: {

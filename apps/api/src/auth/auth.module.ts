@@ -11,10 +11,12 @@ import { EMAIL_SERVICE } from './interfaces';
 import { SsoController } from './sso.controller';
 import { SsoCryptoService } from './services/sso-crypto.service';
 import { SsoService } from './services/sso.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    NotificationsModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService): JwtModuleOptions => {

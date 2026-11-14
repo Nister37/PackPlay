@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, MinLength, IsNumber, Min, Max } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateGroupDto {
@@ -20,4 +20,11 @@ export class UpdateGroupDto {
   @IsOptional()
   @MaxLength(50)
   sportType?: string;
+
+  @ApiPropertyOptional({ description: 'Maximum squad members capacity', example: 25 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(1000)
+  maxMembers?: number;
 }

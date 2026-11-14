@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -68,6 +71,28 @@ export class GroupActivitiesController {
     @Body() dto: UpdateGroupActivityDto,
   ) {
     return this.sharedEquipmentService.updateActivity(groupId, activityId, dto);
+  }
+
+  @Delete(':activityId')
+  @Roles(GroupMemberRole.OWNER, GroupMemberRole.ADMIN)
+  @UseGuards(GroupRoleGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an event and its manifest items' })
+  async deleteActivity(
+    @Param('groupId') groupId: string,
+    @Param('activityId') activityId: string,
+  ) {
+    return this.sharedEquipmentService.deleteActivity(groupId, activityId);
+  }
+
+  @Post(':activityId/broadcast-reminder')
+  @ApiOperation({ summary: 'Broadcast gear reminder to squad members for an event' })
+  async broadcastGearReminder(
+    @Param('groupId') groupId: string,
+    @Param('activityId') activityId: string,
+    @Req() req: any,
+  ) {
+    return this.sharedEquipmentService.broadcastGearReminder(groupId, activityId, req.user.id);
   }
 
   @Post(':activityId/duplicate')

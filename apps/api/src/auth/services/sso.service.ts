@@ -2,12 +2,15 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SsoIntent, SsoProvider } from '@prisma/client';
 import { AppErrorCode } from '@packplay/common';
 import { PrismaService } from '../../common/prisma.service';
+import { RedisService } from '../../common/redis.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { AuthService } from './auth.service';
 import { SsoCryptoService } from './sso-crypto.service';
 
@@ -18,6 +21,8 @@ export class SsoService {
     private readonly config: ConfigService,
     private readonly crypto: SsoCryptoService,
     private readonly auth: AuthService,
+    @Optional() private readonly redis?: RedisService,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   async start(intent: SsoIntent, userId?: string, requestedReturnUrl?: string) {
@@ -99,10 +104,61 @@ export class SsoService {
         });
       }
       if (existingIdentity && existingIdentity.userId !== authorization.userId) {
-        throw new ConflictException({
-          code: AppErrorCode.SSO_IDENTITY_ALREADY_LINKED,
-          message: 'This Google identity belongs to another account',
+        // Issue #6: when connecting SSO to different account ask on receiver account if it wants to be connected to the X account
+        const requester = await this.prisma.user.findUnique({
+          where: { id: authorization.userId },
         });
+
+        const requestId = `sso_req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        const requestData = {
+          id: requestId,
+          requesterUserId: authorization.userId,
+          requesterEmail: requester?.email || 'Unknown',
+          requesterName: requester?.name || requester?.email || 'Unknown User',
+          receiverUserId: existingIdentity.userId,
+          receiverEmail: existingIdentity.user?.email || email,
+          provider: SsoProvider.GOOGLE,
+          subject: claims.sub,
+          ssoEmail: email,
+          status: 'PENDING',
+          createdAt: new Date().toISOString(),
+        };
+
+        if (this.redis) {
+          await this.redis.set(`sso:connect_req:${requestId}`, requestData, 7 * 86400);
+          await this.redis.set(
+            `sso:receiver_pending:${existingIdentity.userId}:${requestId}`,
+            requestData,
+            7 * 86400,
+          );
+        }
+
+        if (this.notifications) {
+          await this.notifications.createNotification({
+            userId: existingIdentity.userId,
+            type: 'TAKEOVER_REQUESTED',
+            payload: {
+              action: 'SSO_CONNECT_REQUEST',
+              requestId,
+              requesterUserId: authorization.userId,
+              requesterEmail: requester?.email || 'Unknown',
+              requesterName: requester?.name || requester?.email || 'Unknown User',
+              ssoEmail: email,
+              provider: SsoProvider.GOOGLE,
+              title: 'SSO Connection Request',
+              message: `Account "${requester?.email}" wants to connect your Google account (${email}) to their account.`,
+            },
+          });
+        }
+
+        return {
+          linked: false,
+          pendingApproval: true,
+          requestId,
+          receiverEmail: existingIdentity.user?.email || email,
+          message: `A connection request was sent to ${existingIdentity.user?.email || email}. The receiver account must approve connecting to your account.`,
+          returnUrl: authorization.returnUrl,
+        };
       }
       if (!existingIdentity) {
         const providerAlreadyLinked = await this.prisma.externalIdentity.findUnique({
@@ -251,10 +307,181 @@ export class SsoService {
     if (!value) return undefined;
     const frontend = new URL(this.config.get<string>('FRONTEND_URL', 'http://localhost:4200'));
     const requested = new URL(value);
-    return requested.origin === frontend.origin ? requested.toString() : frontend.toString();
+    const isDev = this.config.get<string>('NODE_ENV', 'development') !== 'production';
+    const isLocalhost =
+      requested.hostname === 'localhost' ||
+      requested.hostname === '127.0.0.1';
+    if (requested.origin === frontend.origin || (isDev && isLocalhost)) {
+      return requested.toString();
+    }
+    return frontend.toString();
   }
 
   private user(user: { id: string; email: string; name: string | null }) {
     return { id: user.id, email: user.email, name: user.name };
+  }
+
+  async listConnectRequests(userId: string) {
+    if (!this.redis) return [];
+    try {
+      const client = this.redis.getClient();
+      const keys = await client.keys(`sso:receiver_pending:${userId}:*`);
+      const requests = [];
+      for (const k of keys) {
+        const data = await this.redis.get<any>(k);
+        if (data && data.status === 'PENDING') {
+          requests.push(data);
+        }
+      }
+      return requests;
+    } catch {
+      return [];
+    }
+  }
+
+  async acceptConnectRequest(requestId: string, receiverUserId: string) {
+    if (!this.redis) {
+      throw new ServiceUnavailableException('Storage service is unavailable');
+    }
+    const requestData = await this.redis.get<any>(`sso:connect_req:${requestId}`);
+    if (!requestData || requestData.receiverUserId !== receiverUserId) {
+      throw new NotFoundException('Connection request not found or not addressed to your account');
+    }
+    if (requestData.status !== 'PENDING') {
+      throw new ConflictException('This connection request is no longer pending');
+    }
+
+    // Move external identity to the requester account
+    if (requestData.subject) {
+      await this.prisma.externalIdentity.deleteMany({
+        where: {
+          userId: requestData.requesterUserId,
+          provider: requestData.provider,
+        },
+      });
+
+      await this.prisma.externalIdentity.update({
+        where: {
+          provider_subject: {
+            provider: requestData.provider,
+            subject: requestData.subject,
+          },
+        },
+        data: {
+          userId: requestData.requesterUserId,
+        },
+      });
+    }
+
+    requestData.status = 'ACCEPTED';
+    await this.redis.set(`sso:connect_req:${requestId}`, requestData, 86400);
+    await this.redis.del(`sso:receiver_pending:${receiverUserId}:${requestId}`);
+
+    if (this.notifications) {
+      await this.notifications.createNotification({
+        userId: requestData.requesterUserId,
+        type: 'TAKEOVER_ACCEPTED',
+        payload: {
+          action: 'SSO_CONNECT_ACCEPTED',
+          message: `Your Google identity (${requestData.ssoEmail}) has been connected to your account.`,
+          ssoEmail: requestData.ssoEmail,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Google identity connected to account ${requestData.requesterEmail}`,
+    };
+  }
+
+  async declineConnectRequest(requestId: string, receiverUserId: string) {
+    if (!this.redis) {
+      throw new ServiceUnavailableException('Storage service is unavailable');
+    }
+    const requestData = await this.redis.get<any>(`sso:connect_req:${requestId}`);
+    if (!requestData || requestData.receiverUserId !== receiverUserId) {
+      throw new NotFoundException('Connection request not found or not addressed to your account');
+    }
+
+    requestData.status = 'DECLINED';
+    await this.redis.set(`sso:connect_req:${requestId}`, requestData, 86400);
+    await this.redis.del(`sso:receiver_pending:${receiverUserId}:${requestId}`);
+
+    if (this.notifications) {
+      await this.notifications.createNotification({
+        userId: requestData.requesterUserId,
+        type: 'TAKEOVER_DECLINED',
+        payload: {
+          action: 'SSO_CONNECT_DECLINED',
+          message: `The request to connect Google identity (${requestData.ssoEmail}) was declined by ${requestData.receiverEmail}.`,
+          ssoEmail: requestData.ssoEmail,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Connection request declined',
+    };
+  }
+
+  async requestConnectToAccount(requesterUserId: string, targetEmail: string) {
+    const requester = await this.prisma.user.findUnique({ where: { id: requesterUserId } });
+    if (!requester) throw new NotFoundException('User not found');
+
+    const receiver = await this.prisma.user.findUnique({
+      where: { email: targetEmail.toLowerCase().trim() },
+    });
+    if (!receiver) {
+      throw new NotFoundException(`No account found with email ${targetEmail}`);
+    }
+    if (receiver.id === requesterUserId) {
+      throw new ConflictException('Cannot connect to your own account');
+    }
+
+    const requestId = `sso_req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const requestData = {
+      id: requestId,
+      requesterUserId,
+      requesterEmail: requester.email,
+      requesterName: requester.name || requester.email,
+      receiverUserId: receiver.id,
+      receiverEmail: receiver.email,
+      provider: SsoProvider.GOOGLE,
+      subject: '',
+      ssoEmail: requester.email,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
+
+    if (this.redis) {
+      await this.redis.set(`sso:connect_req:${requestId}`, requestData, 7 * 86400);
+      await this.redis.set(`sso:receiver_pending:${receiver.id}:${requestId}`, requestData, 7 * 86400);
+    }
+
+    if (this.notifications) {
+      await this.notifications.createNotification({
+        userId: receiver.id,
+        type: 'TAKEOVER_REQUESTED',
+        payload: {
+          action: 'SSO_CONNECT_REQUEST',
+          requestId,
+          requesterUserId,
+          requesterEmail: requester.email,
+          requesterName: requester.name || requester.email,
+          ssoEmail: requester.email,
+          provider: SsoProvider.GOOGLE,
+          title: 'Account Connection Request',
+          message: `Account "${requester.email}" is asking to connect with your account.`,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      requestId,
+      message: `Connection request sent to ${receiver.email}. The receiver account must approve.`,
+    };
   }
 }

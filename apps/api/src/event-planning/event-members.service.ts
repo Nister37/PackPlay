@@ -25,6 +25,21 @@ export class EventMembersService {
     });
   }
 
+  async listRoles(groupId: string, activityId: string) {
+    await this.assertActivity(groupId, activityId);
+    return this.prisma.eventRole.findMany({
+      where: { activityId },
+      include: {
+        assignments: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async assignRole(
     groupId: string,
     activityId: string,

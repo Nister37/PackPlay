@@ -19,6 +19,7 @@ export class GroupsService {
         name: dto.name,
         description: dto.description,
         sportType: dto.sportType,
+        maxMembers: dto.maxMembers,
         members: {
           create: {
             userId,
@@ -86,6 +87,7 @@ export class GroupsService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.sportType !== undefined && { sportType: dto.sportType }),
+        ...(dto.maxMembers !== undefined && { maxMembers: dto.maxMembers }),
       },
     });
 
@@ -209,4 +211,22 @@ export class GroupsService {
 
     return [updatedCurrent, updatedTarget];
   }
+
+  async getMember(groupId: string, userId: string) {
+    if (!groupId || !userId) return null;
+    return this.prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+  }
+
+  async canUserManageGroup(groupId: string, userId: string): Promise<boolean> {
+    if (!groupId || !userId) return false;
+    const member = await this.prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      select: { role: true },
+    });
+    return member?.role === GroupMemberRole.OWNER || member?.role === GroupMemberRole.ADMIN;
+  }
 }
+

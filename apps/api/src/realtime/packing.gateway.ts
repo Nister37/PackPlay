@@ -32,10 +32,11 @@ export class PackingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
   afterInit(server: Server) {
     const origin = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
-    (server as any).opts.cors = {
+    if ((server as any)?.opts) { (server as any).opts.cors = {
       origin,
       credentials: true,
     };
+    }
   }
 
   async handleConnection(client: Socket) {

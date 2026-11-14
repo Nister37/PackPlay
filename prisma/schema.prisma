@@ -314,6 +314,7 @@ model Group {
   name        String   @db.VarChar(100)
   description String?  @db.VarChar(500)
   sportType   String   @map("sport_type") @db.VarChar(50)
+  maxMembers  Int?     @map("max_members")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

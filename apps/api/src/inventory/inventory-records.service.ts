@@ -140,6 +140,7 @@ export class InventoryRecordsService {
     );
     const url = `${baseUrl.replace(/\/$/, '')}/inventory/scan/${token}`;
     return {
+      token,
       url,
       qrDataUrl: await QRCode.toDataURL(url, { width: 300 }),
     };
@@ -149,13 +150,33 @@ export class InventoryRecordsService {
     const tokenHash = this.hash(token);
     const batch = await this.prisma.inventoryBatch.findUnique({
       where: { qrTokenHash: tokenHash },
-      include: { inventoryItem: true, location: true, holder: true },
+      include: {
+        inventoryItem: true,
+        location: true,
+        holder: true,
+        custodies: {
+          where: { returnedAt: null },
+          include: { holder: { select: { id: true, name: true, email: true } } },
+          orderBy: { checkedOutAt: 'desc' },
+          take: 1,
+        },
+      },
     });
     const asset = batch
       ? null
       : await this.prisma.inventoryAsset.findUnique({
           where: { qrTokenHash: tokenHash },
-          include: { inventoryItem: true, location: true, holder: true },
+          include: {
+            inventoryItem: true,
+            location: true,
+            holder: true,
+            custodies: {
+              where: { returnedAt: null },
+              include: { holder: { select: { id: true, name: true, email: true } } },
+              orderBy: { checkedOutAt: 'desc' },
+              take: 1,
+            },
+          },
         });
     const stock = batch ?? asset;
     if (!stock) {
@@ -178,9 +199,16 @@ export class InventoryRecordsService {
         message: 'Inventory QR code is invalid',
       });
     }
+    const activeCustody = stock.custodies?.[0] ?? null;
     return {
       kind: batch ? 'BATCH' : 'ASSET',
       stock,
+      activeCustody,
+      targetType: batch ? 'BATCH' : 'ASSET',
+      item: stock.inventoryItem,
+      asset: asset ?? undefined,
+      batch: batch ?? undefined,
+      location: stock.location ?? undefined,
       allowedActions: ['CHECKOUT', 'RETURN', 'DAMAGE_REPORT'],
     };
   }

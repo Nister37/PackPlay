@@ -22,6 +22,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { EquipmentCatalogueModule } from './equipment-catalogue/equipment-catalogue.module';
 import { WeatherModule } from './weather/weather.module';
 import { CalendarImportsModule } from './calendar-imports/calendar-imports.module';
+import { GemmaModule } from './ai/gemma.module';
 
 @Module({
   imports: [
@@ -31,8 +32,11 @@ import { CalendarImportsModule } from './calendar-imports/calendar-imports.modul
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60000,
-        limit: 30,
+        ttl: Number(process.env.THROTTLE_TTL || 60000),
+        limit: Number(
+          process.env.THROTTLE_LIMIT ||
+            (process.env.NODE_ENV === 'production' ? 120 : 1000),
+        ),
       },
     ]),
     ScheduleModule.forRoot(),
@@ -54,6 +58,7 @@ import { CalendarImportsModule } from './calendar-imports/calendar-imports.modul
     EquipmentCatalogueModule,
     WeatherModule,
     CalendarImportsModule,
+    GemmaModule,
   ],
   providers: [
     {

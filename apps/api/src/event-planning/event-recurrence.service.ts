@@ -116,10 +116,15 @@ export class EventRecurrenceService {
           },
         });
       }
-      return tx.eventRecurrenceSeries.findUnique({
+      const result = await tx.eventRecurrenceSeries.findUnique({
         where: { id: series.id },
         include: { activities: { orderBy: { occurrenceIndex: 'asc' } } },
       });
+      return {
+        ...result,
+        seriesId: series.id,
+        created: result?.activities?.length ?? dates.length,
+      };
     });
   }
 

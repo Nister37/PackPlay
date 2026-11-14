@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
 import {
   GroupActivityStatus,
+  NotificationType,
   Prisma,
   ResponsibilityTransferStatus,
   SharedResponsibilityStatus,
@@ -28,9 +30,16 @@ import {
   TransferResponsibilityDto,
 } from './dto/responsibility.dto';
 import { calculateCoverage } from './coverage.util';
+import { ItemCoverage } from './models/item-coverage';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventActivityLogService } from '../event-planning/event-activity-log.service';
-import { EquipmentCatalogueService } from '../equipment-catalogue/equipment-catalogue.service';
+import { GroupsService } from '../groups/groups.service';
+import { EventBusService } from '../common/event-bus.service';
+import {
+  ItemCreatedEvent,
+  ItemPackedEvent,
+  CustodyTransferredEvent,
+} from '../common/domain-events';
 
 @Injectable()
 export class SharedEquipmentService {
@@ -38,8 +47,9 @@ export class SharedEquipmentService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly groupsService?: GroupsService,
     @Optional() private readonly eventLog?: EventActivityLogService,
-    @Optional() private readonly equipmentCatalogue?: EquipmentCatalogueService,
+    @Optional() private readonly eventBus?: EventBusService,
   ) {}
 
   // ─── Group Activities ─────────────────────────────────────────────────
@@ -179,10 +189,104 @@ export class SharedEquipmentService {
     });
   }
 
+  async deleteActivity(groupId: string, activityId: string) {
+    await this.getActivity(groupId, activityId);
+    await this.prisma.groupActivity.delete({
+      where: { id: activityId },
+    });
+    await this.invalidateActivityCache(activityId);
+  }
+
+  async broadcastGearReminder(groupId: string, activityId: string, userId: string) {
+    const activity = await this.prisma.groupActivity.findUnique({
+      where: { id: activityId },
+      include: {
+        group: {
+          include: {
+            members: {
+              include: { user: { select: { id: true, name: true, email: true } } },
+            },
+          },
+        },
+        sharedItems: {
+          include: {
+            responsibilities: true,
+          },
+        },
+      },
+    });
+
+    if (!activity || activity.groupId !== groupId) {
+      throw new NotFoundException({
+        code: AppErrorCode.ACTIVITY_NOT_FOUND,
+        message: 'Activity not found',
+      });
+    }
+
+    const callerMembership = activity.group.members.find((m) => m.userId === userId);
+    if (!callerMembership) {
+      throw new ForbiddenException({
+        code: AppErrorCode.NOT_A_MEMBER,
+        message: 'You are not a member of this squad',
+      });
+    }
+
+    const uncoveredItems = activity.sharedItems.filter((item) => {
+      const committedQty = item.responsibilities
+        .filter(
+          (r) =>
+            r.status === SharedResponsibilityStatus.COMMITTED ||
+            r.status === SharedResponsibilityStatus.PACKED,
+        )
+        .reduce((sum, r) => sum + r.committedQuantity, 0);
+      return committedQty < item.requiredQuantity;
+    });
+
+    const otherMembers = activity.group.members.filter((m) => m.userId !== userId);
+    const callerName = callerMembership.user?.name || 'A squad member';
+
+    const uncoveredCount = uncoveredItems.length;
+    const itemNames = uncoveredItems.map((i) => i.name).slice(0, 5);
+
+    if (otherMembers.length > 0) {
+      await this.notificationsService.createNotificationsBatch(
+        otherMembers.map((m) => ({
+          userId: m.userId,
+          groupId,
+          type: NotificationType.ITEM_MISSING,
+          payload: {
+            title: `Gear Reminder: ${activity.name}`,
+            body:
+              uncoveredCount > 0
+                ? `${callerName} broadcasted a gear reminder. ${uncoveredCount} item(s) needed: ${itemNames.join(', ')}`
+                : `${callerName} checked the manifest for ${activity.name}. All items currently covered!`,
+            activityId,
+            activityName: activity.name,
+            groupId,
+            groupName: activity.group.name,
+            uncoveredCount,
+            uncoveredItems: itemNames,
+            senderName: callerName,
+          },
+        })),
+      );
+    }
+
+    return {
+      success: true,
+      notifiedCount: otherMembers.length,
+      uncoveredCount,
+      uncoveredItems: itemNames,
+      activityName: activity.name,
+    };
+  }
+
   async getActivity(groupId: string, activityId: string) {
     const activity = await this.prisma.groupActivity.findUnique({
       where: { id: activityId },
       include: {
+        group: true,
+        sportProfile: true,
         sharedItems: {
           include: {
             responsibilities: {
@@ -252,10 +356,15 @@ export class SharedEquipmentService {
     });
 
     await this.invalidateActivityCache(activityId);
-    if (dto.catalogueItemId && this.equipmentCatalogue) {
-      await this.equipmentCatalogue.recordTeamUsage(
-        activity.groupId,
-        dto.catalogueItemId,
+    if (this.eventBus) {
+      this.eventBus.publish(
+        new ItemCreatedEvent({
+          activityId: activity.id,
+          itemId: item.id,
+          groupId: activity.groupId,
+          catalogueItemId: dto.catalogueItemId,
+          createdById: userId,
+        }),
       );
     }
 
@@ -287,8 +396,21 @@ export class SharedEquipmentService {
   }
 
   async deleteSharedItem(activityId: string, itemId: string, userId: string) {
-    await this.assertActivityGroupMember(activityId, userId);
-    await this.findSharedItemOrThrow(activityId, itemId);
+    const activity = await this.assertActivityGroupMember(activityId, userId);
+    const item = await this.findSharedItemOrThrow(activityId, itemId);
+
+    const canManage = this.groupsService
+      ? await this.groupsService.canUserManageGroup(activity.groupId, userId)
+      : false;
+    const canDelete = canManage || item.createdById === userId;
+
+    if (!canDelete) {
+      throw new ForbiddenException({
+        code: AppErrorCode.FORBIDDEN,
+        message: 'You do not have permission to remove this equipment item',
+      });
+    }
+
     await this.prisma.sharedItem.delete({ where: { id: itemId } });
     await this.invalidateActivityCache(activityId);
   }
@@ -358,13 +480,6 @@ export class SharedEquipmentService {
     await this.assertItemGroupMember(itemId, userId);
     const quantity = dto.quantity ?? 1;
 
-    if (quantity < 1) {
-      throw new BadRequestException({
-        code: AppErrorCode.INVALID_QUANTITY,
-        message: 'Quantity must be at least 1',
-      });
-    }
-
     const activityId = await this.getActivityIdForItem(itemId);
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -380,36 +495,8 @@ export class SharedEquipmentService {
         });
       }
 
-      // Check if user already has an active responsibility
-      const existing = item.responsibilities.find(
-        (r) =>
-          r.userId === userId &&
-          (r.status === SharedResponsibilityStatus.COMMITTED ||
-            r.status === SharedResponsibilityStatus.PACKED),
-      );
-
-      if (existing) {
-        throw new ConflictException({
-          code: AppErrorCode.ALREADY_CLAIMED,
-          message: 'You have already claimed this item',
-        });
-      }
-
-      // Check if claim would exceed required quantity
-      const currentCommitted = item.responsibilities
-        .filter(
-          (r) =>
-            r.status === SharedResponsibilityStatus.COMMITTED ||
-            r.status === SharedResponsibilityStatus.PACKED,
-        )
-        .reduce((sum, r) => sum + r.committedQuantity, 0);
-
-      if (currentCommitted + quantity > item.requiredQuantity) {
-        throw new ConflictException({
-          code: AppErrorCode.SHARED_ITEM_ALREADY_COVERED,
-          message: 'Claiming this quantity would exceed the required amount',
-        });
-      }
+      const coverage = ItemCoverage.fromItem(item.requiredQuantity, item.responsibilities);
+      coverage.assertCanClaim(userId, quantity);
 
       return tx.sharedResponsibility.create({
         data: {
@@ -444,12 +531,8 @@ export class SharedEquipmentService {
         });
       }
 
-      if (responsibility.status === SharedResponsibilityStatus.PACKED) {
-        throw new BadRequestException({
-          code: AppErrorCode.CANNOT_RELEASE_PACKED,
-          message: 'Cannot release a responsibility that is already packed',
-        });
-      }
+      const coverage = ItemCoverage.fromItem(0, [responsibility]);
+      coverage.assertCanRelease(userId);
 
       return tx.sharedResponsibility.update({
         where: { id: responsibility.id },
@@ -486,6 +569,8 @@ export class SharedEquipmentService {
       }
 
       const packQuantity = dto.quantity ?? responsibility.committedQuantity;
+      const coverage = ItemCoverage.fromItem(0, [responsibility]);
+      coverage.assertCanPack(userId, packQuantity);
 
       return tx.sharedResponsibility.update({
         where: { id: responsibility.id },
@@ -498,6 +583,17 @@ export class SharedEquipmentService {
         },
       });
     });
+
+    if (this.eventBus) {
+      this.eventBus.publish(
+        new ItemPackedEvent({
+          activityId: activityId ?? '',
+          itemId,
+          userId,
+          timestamp: new Date(),
+        }),
+      );
+    }
     await this.recordEventAction(
       activityId,
       userId,
@@ -626,19 +722,15 @@ export class SharedEquipmentService {
         });
       }
 
+      const coverage = ItemCoverage.fromItem(item.requiredQuantity, item.responsibilities);
+      coverage.assertCanTakeOver(userId, quantity);
+
       // Verify there is a missing responsibility to take over
       const missingResponsibilities = item.responsibilities.filter(
         (r) =>
           r.status === SharedResponsibilityStatus.FORGOT ||
           r.status === SharedResponsibilityStatus.COULD_NOT_BRING,
       );
-
-      if (missingResponsibilities.length === 0) {
-        throw new BadRequestException({
-          code: AppErrorCode.CANNOT_TAKE_OVER_COVERED,
-          message: 'No missing responsibilities to take over',
-        });
-      }
 
       // Check if user already has an active claim
       const existing = item.responsibilities.find(
@@ -745,9 +837,19 @@ export class SharedEquipmentService {
         });
       }
 
-      const targetIsMember = item.groupActivity.group.members.some(
-        (m) => m.userId === dto.targetUserId,
-      );
+      let targetIsMember = false;
+      if (this.groupsService && item.groupActivity?.groupId) {
+        const member = await this.groupsService.getMember(
+          item.groupActivity.groupId,
+          dto.targetUserId,
+        );
+        targetIsMember = Boolean(member);
+      }
+      if (!targetIsMember && item.groupActivity?.group?.members) {
+        targetIsMember = item.groupActivity.group.members.some(
+          (m: { userId: string }) => m.userId === dto.targetUserId,
+        );
+      }
 
       if (!targetIsMember) {
         throw new BadRequestException({
@@ -756,32 +858,19 @@ export class SharedEquipmentService {
         });
       }
 
-      if (dto.targetUserId === userId) {
-        throw new BadRequestException('Responsibility must be transferred to another member');
-      }
-
-      // Check if target already has an active responsibility
       const targetExisting = await tx.sharedResponsibility.findUnique({
         where: {
           sharedItemId_userId: { sharedItemId: itemId, userId: dto.targetUserId },
         },
       });
 
-      if (
-        targetExisting &&
-        (targetExisting.status === SharedResponsibilityStatus.COMMITTED ||
-          targetExisting.status === SharedResponsibilityStatus.PACKED)
-      ) {
-        throw new ConflictException({
-          code: AppErrorCode.ALREADY_CLAIMED,
-          message: 'Target user already has an active responsibility for this item',
-        });
-      }
+      const coverage = ItemCoverage.fromItem(item.requiredQuantity ?? 0, [
+        { ...responsibility, userId },
+        ...(targetExisting ? [{ ...targetExisting, userId: dto.targetUserId }] : []),
+      ]);
+      coverage.assertCanTransfer(userId, dto.targetUserId, dto.quantity);
 
       const transferQuantity = dto.quantity ?? responsibility.committedQuantity;
-      if (transferQuantity > responsibility.committedQuantity) {
-        throw new BadRequestException('Transfer quantity exceeds current responsibility');
-      }
 
       await tx.responsibilityTransfer.updateMany({
         where: {
@@ -809,7 +898,7 @@ export class SharedEquipmentService {
 
   async acceptTransfer(itemId: string, transferId: string, userId: string) {
     await this.assertItemGroupMember(itemId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const transfer = await tx.responsibilityTransfer.findUnique({ where: { id: transferId } });
       if (
         !transfer ||
@@ -859,6 +948,22 @@ export class SharedEquipmentService {
         data: { status: ResponsibilityTransferStatus.ACCEPTED, respondedAt: new Date() },
       });
     });
+
+    const bus = this.eventBus;
+    if (bus) {
+      const activityId = await this.getActivityIdForItem(itemId);
+      bus.publish(
+        new CustodyTransferredEvent({
+          activityId: activityId ?? '',
+          itemId,
+          fromUserId: result.fromUserId,
+          toUserId: result.toUserId,
+          quantity: result.quantity,
+        }),
+      );
+    }
+
+    return result;
   }
 
   async getCoverage(itemId: string, userId: string) {
@@ -899,6 +1004,7 @@ export class SharedEquipmentService {
       item: {
         id: item.id,
         name: item.name,
+        category: item.category ?? undefined,
         description: item.notes,
         requiredQuantity: item.requiredQuantity,
         unit: 'unit(s)',
@@ -957,12 +1063,29 @@ export class SharedEquipmentService {
       select: {
         groupActivity: {
           select: {
+            groupId: true,
             group: { select: { members: { where: { userId }, select: { id: true }, take: 1 } } },
           },
         },
       },
     });
-    if (!item?.groupActivity?.group?.members?.length) {
+    if (!item?.groupActivity) {
+      throw new NotFoundException({
+        code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
+        message: 'Shared item not found',
+      });
+    }
+
+    let isMember = false;
+    if (this.groupsService && item.groupActivity.groupId) {
+      const member = await this.groupsService.getMember(item.groupActivity.groupId, userId);
+      isMember = Boolean(member);
+    }
+    if (!isMember && item.groupActivity.group?.members?.length) {
+      isMember = true;
+    }
+
+    if (!isMember) {
       throw new NotFoundException({
         code: AppErrorCode.SHARED_ITEM_NOT_FOUND,
         message: 'Shared item not found',

@@ -22,7 +22,10 @@ import {
   PasswordResetConfirmDto,
 } from './dto';
 
-const AUTH_RATE_LIMIT = process.env.NODE_ENV === 'test' ? 1000 : 5;
+const AUTH_RATE_LIMIT = Number(
+  process.env.AUTH_RATE_LIMIT ||
+    (process.env.NODE_ENV === 'production' ? 10 : 1000),
+);
 
 @ApiTags('auth')
 @Controller('auth')

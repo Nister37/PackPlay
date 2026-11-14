@@ -6,13 +6,13 @@ import { SharedEquipmentService } from './shared-equipment.service';
 import { GroupMemberGuard, GroupRoleGuard } from '../groups/guards';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EventPlanningModule } from '../event-planning/event-planning.module';
-import { EquipmentCatalogueModule } from '../equipment-catalogue/equipment-catalogue.module';
+import { GroupsModule } from '../groups/groups.module';
 
 @Module({
   imports: [
     NotificationsModule,
     EventPlanningModule,
-    EquipmentCatalogueModule,
+    GroupsModule,
   ],
   controllers: [
     GroupActivitiesController,
