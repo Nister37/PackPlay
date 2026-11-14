@@ -101,9 +101,9 @@ export function useRealtimeSession(sessionId?: string | null) {
 
     startSession: startSessionMutation.mutateAsync,
     recordDecision: recordDecisionMutation.mutateAsync,
-    resetDeck: resetDeckMutation.mutateAsync,
-    completeSession: completeMutation.mutateAsync,
-    abandonSession: abandonMutation.mutateAsync,
+    resetDeck: (targetSessionId?: string) => resetDeckMutation.mutateAsync(targetSessionId),
+    completeSession: (targetSessionId?: string) => completeMutation.mutateAsync(targetSessionId),
+    abandonSession: (targetSessionId?: string) => abandonMutation.mutateAsync(targetSessionId),
 
     startSessionMutation,
     recordDecisionMutation,

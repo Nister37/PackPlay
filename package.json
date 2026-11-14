@@ -9,6 +9,7 @@
     "lint": "nx lint api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
