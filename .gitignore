@@ -36,6 +36,8 @@ npm-debug.log*
 # Test coverage and results
 coverage/
 test-results/
+playwright-report/
+blob-report/
 
 # Terraform and Ansible local state
 .terraform/
@@ -52,6 +54,7 @@ redis_data/
 
 # Agent bridge
 .agentbridge/
+.ai/
 
 # Local agent instructions
 AGENT.md
