@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-12  
 **Scope:** Full backend (`apps/api/`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`)  
-**Severity Scale:** 🔴 Critical | 🟠 High | 🟡 Medium | 🔵 Low | ✅ Good Practice Noted
+**Severity Scale:** Critical | High | Medium | Low | Good Practice Noted
 
 ---
 
@@ -10,13 +10,13 @@
 
 The PackPlay backend demonstrates solid foundations: proper token hashing, session rotation, rate limiting, RBAC guards, and safe ORM usage. However, several issues must be addressed before production deployment, particularly around WebSocket CORS, JWT secret handling, missing security headers, and a critical N+1 query in the readiness endpoint.
 
-**Counts:** 🔴 1 | 🟠 6 | 🟡 8 | 🔵 4 | ✅ 12
+**Counts:** Critical: 1 | High: 6 | Medium: 8 | Low: 4 | Good Practice: 12
 
 ---
 
 ## Part 1: Security Audit
 
-### ✅ Things Done Well
+### Things Done Well
 
 | Area | Detail |
 |------|--------|
@@ -35,7 +35,7 @@ The PackPlay backend demonstrates solid foundations: proper token hashing, sessi
 
 ---
 
-### 🟠 SEC-1: WebSocket CORS Set to `*` (High)
+### SEC-1: WebSocket CORS Set to `*` (High)
 
 **File:** `apps/api/src/realtime/packing.gateway.ts:18`
 
@@ -66,7 +66,7 @@ Or inject `ConfigService`:
 
 ---
 
-### 🟠 SEC-2: JWT Secret Has Hardcoded Fallback (High)
+### SEC-2: JWT Secret Has Hardcoded Fallback (High)
 
 **Files:** `auth.module.ts:20`, `jwt.strategy.ts:14`, `packing.gateway.ts:34`
 
@@ -88,7 +88,7 @@ Apply the same pattern in `JwtStrategy` and `PackingGateway`.
 
 ---
 
-### 🟠 SEC-3: No Helmet Middleware — Missing Security Headers (High)
+### SEC-3: No Helmet Middleware — Missing Security Headers (High)
 
 **File:** `apps/api/src/main.ts`
 
@@ -115,7 +115,7 @@ async function bootstrap() {
 
 ---
 
-### 🟠 SEC-4: Swagger Exposed in Production (High)
+### SEC-4: Swagger Exposed in Production (High)
 
 **File:** `apps/api/src/main.ts:27-31`
 
@@ -131,7 +131,7 @@ if (configService.get('NODE_ENV') !== 'production') {
 
 ---
 
-### 🟡 SEC-5: No Password Complexity Validation (Medium)
+### SEC-5: No Password Complexity Validation (Medium)
 
 **File:** `apps/api/src/auth/dto/register.dto.ts`
 
@@ -149,7 +149,7 @@ password!: string;
 
 ---
 
-### 🟡 SEC-6: Refresh Token in Response Body (Medium)
+### SEC-6: Refresh Token in Response Body (Medium)
 
 **File:** `auth.service.ts` → `createSession()` returns `{ accessToken, refreshToken }`
 
@@ -159,7 +159,7 @@ Tokens are returned in the JSON body. While acceptable for mobile/SPA apps, this
 
 ---
 
-### 🟡 SEC-7: Invitation Token in URL Path (Medium)
+### SEC-7: Invitation Token in URL Path (Medium)
 
 **File:** `invitations.controller.ts`
 
@@ -178,7 +178,7 @@ GET  /invitations/info  { "token": "..." }  (or use query param with short TTL)
 
 ---
 
-### 🟡 SEC-8: `enableImplicitConversion` Allows Type Coercion Abuse (Medium)
+### SEC-8: `enableImplicitConversion` Allows Type Coercion Abuse (Medium)
 
 **File:** `apps/api/src/main.ts:24`
 
@@ -206,7 +206,7 @@ Or create a `PaginationQueryDto` and use it.
 
 ---
 
-### 🟡 SEC-9: No CSRF Protection (Medium)
+### SEC-9: No CSRF Protection (Medium)
 
 If refresh tokens are ever moved to cookies (SEC-6), CSRF attacks become possible. Currently low-risk since tokens are in request bodies.
 
@@ -218,7 +218,7 @@ npm install csurf
 
 ---
 
-### 🔵 SEC-10: `resendVerification` Leaks Verified Status (Low)
+### SEC-10: `resendVerification` Leaks Verified Status (Low)
 
 **File:** `auth.service.ts:83-86`
 
@@ -237,7 +237,7 @@ if (!user || user.emailVerified) return; // Silent
 
 ---
 
-### 🔵 SEC-11: No Token Cleanup / Expired Token Pruning (Low)
+### SEC-11: No Token Cleanup / Expired Token Pruning (Low)
 
 Used/expired tokens accumulate in `email_verification_tokens`, `password_reset_tokens`, and `sessions` tables indefinitely.
 
@@ -254,7 +254,7 @@ async pruneExpiredTokens() {
 
 ---
 
-### 🔵 SEC-12: `any` Type in Where Clause (Low)
+### SEC-12: `any` Type in Where Clause (Low)
 
 **File:** `packing-sessions.service.ts:50`
 
@@ -272,7 +272,7 @@ const where: Prisma.PackingSessionWhereInput = { userId };
 
 ---
 
-### 🔵 SEC-13: Console Logging in Production (Low)
+### SEC-13: Console Logging in Production (Low)
 
 **File:** `main.ts:36-37`
 
@@ -287,7 +287,7 @@ Use NestJS `Logger` instead for structured output.
 
 ## Part 2: Performance Review
 
-### 🔴 PERF-1: Critical N+1 Query in `getGroupReadiness()` (Critical)
+### PERF-1: Critical N+1 Query in `getGroupReadiness()` (Critical)
 
 **File:** `apps/api/src/readiness/readiness.service.ts:79-130`
 
@@ -350,7 +350,7 @@ This reduces N+1 queries to **2 queries** total regardless of group size.
 
 ---
 
-### 🟠 PERF-2: Redis Instantiated but Never Used for Caching (High)
+### PERF-2: Redis Instantiated but Never Used for Caching (High)
 
 **File:** `apps/api/src/common/redis.service.ts`
 
@@ -380,7 +380,7 @@ async invalidate(pattern: string): Promise<void> {
 
 ---
 
-### 🟠 PERF-3: Batch Notification Creation Missing (High)
+### PERF-3: Batch Notification Creation Missing (High)
 
 **File:** `packing-sessions.service.ts:195-208`
 
@@ -408,7 +408,7 @@ async createNotificationsBatch(inputs: CreateNotificationInput[]) {
 
 ---
 
-### 🟠 PERF-4: Missing Compound Indexes on `PackingDecision` (High)
+### PERF-4: Missing Compound Indexes on `PackingDecision` (High)
 
 **File:** `prisma/schema.prisma`
 
@@ -435,7 +435,7 @@ model PackingDecision {
 
 ---
 
-### 🟡 PERF-5: WebSocket Membership Check Over-fetches (Medium)
+### PERF-5: WebSocket Membership Check Over-fetches (Medium)
 
 **File:** `packing.gateway.ts:57-64`
 
@@ -463,7 +463,7 @@ await client.join(`activity:${data.activityId}`);
 
 ---
 
-### 🟡 PERF-6: No Pagination on List Endpoints (Medium)
+### PERF-6: No Pagination on List Endpoints (Medium)
 
 **Files:** `packing-sessions.service.ts:listSessions()`, `shared-equipment.service.ts:listActivities()`, `shared-equipment.service.ts:listSharedItems()`
 
@@ -484,7 +484,7 @@ async listSessions(userId: string, status?: string, page = 1, limit = 20) {
 
 ---
 
-### 🟡 PERF-7: No Connection Pool Configuration (Medium)
+### PERF-7: No Connection Pool Configuration (Medium)
 
 **File:** `apps/api/src/common/prisma.service.ts`
 
@@ -499,7 +499,7 @@ Or use Prisma's `datasourceUrl` option with explicit pool settings.
 
 ---
 
-### 🟡 PERF-8: `getGroupReadiness` Eagerly Loads Unused Data (Medium)
+### PERF-8: `getGroupReadiness` Eagerly Loads Unused Data (Medium)
 
 The single initial query loads ALL responsibilities for ALL shared items even though only committed+packed statuses are needed for the coverage calculation.
 
@@ -520,7 +520,7 @@ sharedItems: {
 
 ---
 
-### 🟡 PERF-9: `emitToUser` Iterates All Sockets (Medium)
+### PERF-9: `emitToUser` Iterates All Sockets (Medium)
 
 **File:** `packing.gateway.ts:93-99`
 
@@ -562,7 +562,7 @@ emitToUser(userId: string, event: string, payload: Record<string, unknown>) {
 
 ## Part 3: Dependency & Configuration
 
-### 🟡 DEP-1: Caret Ranges in `package.json` (Medium)
+### DEP-1: Caret Ranges in `package.json` (Medium)
 
 All dependencies use `^` ranges allowing minor version bumps. A compromised or buggy minor release could break production.
 
@@ -573,7 +573,7 @@ npm config set save-exact true
 
 ---
 
-### 🟡 DEP-2: Docker Compose Fallback Secrets (Medium)
+### DEP-2: Docker Compose Fallback Secrets (Medium)
 
 ```yaml
 MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
