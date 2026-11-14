@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { CheckCircle2, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import api from '@/lib/api';
+import { Item3DViewer } from '@/components/3d/Item3DViewer';
+
+import { packingService } from '@/services/packing.service';
+import { equipmentService } from '@/services/equipment.service';
 import type { EquipmentItem, PackingSession, SharedItemWithCoverage } from '@/types';
 
 type DecisionType = 'PACKED' | 'NOT_PACKED' | 'SKIPPED';
@@ -38,9 +42,12 @@ export function PackingSessionPage() {
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
 
-  // Card animation state
+  // Card animation & drag state
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const pointerStartX = useRef<number>(0);
 
   // Initialize session
   useEffect(() => {
@@ -56,26 +63,20 @@ export function PackingSessionPage() {
       setIsInitializing(true);
       setInitError('');
       try {
-        const listResp = await api.get('/packing-sessions', {
-          params: { status: 'IN_PROGRESS' },
-        });
-        const sessions: PackingSession[] = listResp.data;
+        const sessions = await packingService.listSessions('IN_PROGRESS');
         let activeSession = sessions.find((s) => s.groupActivityId === activityId) ?? null;
 
         if (!activeSession) {
-          const createResp = await api.post('/packing-sessions', { groupActivityId: activityId });
-          activeSession = createResp.data as PackingSession;
+          activeSession = await packingService.startSession({ groupActivityId: activityId ?? undefined });
         }
 
         if (cancelled) return;
         setSession(activeSession);
 
-        const [remainingResp, sharedItemsResp] = await Promise.all([
-          api.get(`/packing-sessions/${activeSession!.id}/remaining`),
-          api.get(`/activities/${activityId}/shared-items`),
+        const [remaining, sharedItems] = await Promise.all([
+          packingService.getRemainingItems(activeSession.id),
+          equipmentService.listSharedItems(activityId!),
         ]);
-        const remaining: EquipmentItem[] = remainingResp.data;
-        const sharedItems: SharedItemWithCoverage[] = sharedItemsResp.data;
 
         if (cancelled) return;
         setRemainingItems(remaining);
@@ -107,20 +108,16 @@ export function PackingSessionPage() {
       decision: DecisionType;
       reason?: MissingReason;
     }) =>
-      api
-        .post(`/packing-sessions/${sessionId}/decisions`, { equipmentItemId, decision, reason })
-        .then((r) => r.data),
+      packingService.recordDecision(sessionId, { equipmentItemId, decision, reason }),
   });
 
   const completeMutation = useMutation({
-    mutationFn: (sessionId: string) =>
-      api.post(`/packing-sessions/${sessionId}/complete`).then((r) => r.data),
+    mutationFn: (sessionId: string) => packingService.completeSession(sessionId),
     onSuccess: () => setIsComplete(true),
   });
 
   const abandonMutation = useMutation({
-    mutationFn: (sessionId: string) =>
-      api.post(`/packing-sessions/${sessionId}/abandon`).then((r) => r.data),
+    mutationFn: (sessionId: string) => packingService.abandonSession(sessionId),
     onSuccess: () => navigate(`/groups/${groupId}`),
   });
 
@@ -219,7 +216,9 @@ export function PackingSessionPage() {
         </p>
         <p className="font-body text-sm text-brand-muted">{initError}</p>
         <Button variant="ghost" onClick={() => navigate(-1)}>
-          ← GO BACK
+          <span className="flex items-center gap-1.5">
+            <ArrowLeft className="w-4 h-4" /> GO BACK
+          </span>
         </Button>
       </div>
     );
@@ -229,7 +228,7 @@ export function PackingSessionPage() {
   if (isComplete || (remainingItems.length === 0 && decidedCount > 0)) {
     return (
       <div className="min-h-screen bg-[#2D6A4F] flex flex-col items-center justify-center text-center px-6">
-        <span className="font-headline font-bold text-8xl text-white">✓</span>
+        <CheckCircle2 className="w-20 h-20 text-white" />
         <h1 className="font-headline font-bold text-2xl uppercase tracking-wider text-white mt-4">
           MISSION COMPLETE
         </h1>
@@ -264,10 +263,33 @@ export function PackingSessionPage() {
     );
   }
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isAnimating) return;
+    pointerStartX.current = e.clientX;
+    setIsDragging(true);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setDragX(e.clientX - pointerStartX.current);
+  };
+
+  const handlePointerUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragX > 75) {
+      handleDecision('PACKED');
+    } else if (dragX < -75) {
+      setShowReasonPicker(true);
+    }
+    setDragX(0);
+  };
+
   const currentItem = remainingItems[currentIndex];
 
   return (
-    <div className="min-h-screen bg-[#FCF9F8] flex flex-col" style={{ maxWidth: '390px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-[#FCF9F8] flex flex-col max-w-md md:max-w-xl mx-auto w-full shadow-sm">
       {/* Header */}
       <div className="bg-[#1A1A1A] px-4 py-3 flex justify-between items-center shrink-0">
         <h1 className="font-headline font-bold text-white uppercase tracking-wide">PACKING</h1>
@@ -304,27 +326,33 @@ export function PackingSessionPage() {
           <button
             onClick={goToPrev}
             disabled={currentIndex === 0 || isAnimating}
-            className="w-10 h-10 flex items-center justify-center border border-[#1A1A1A] font-headline font-bold text-brand-text disabled:opacity-30 shrink-0"
+            className="w-10 h-10 flex items-center justify-center border border-[#1A1A1A] font-headline font-bold text-brand-text disabled:opacity-30 shrink-0 hover:bg-black/5 transition-colors"
             aria-label="Previous item"
           >
-            ◀
+            <ChevronLeft className="w-5 h-5" />
           </button>
 
           {/* Card */}
           <div className="flex-1 overflow-hidden">
             {currentItem && (
               <div
-                className="bg-white border-2 border-[#1A1A1A] rounded-lg p-6"
+                className="bg-white border-2 border-[#1A1A1A] rounded-lg p-6 select-none cursor-grab active:cursor-grabbing relative"
                 style={{
-                  transform:
-                    slideDir === 'left'
+                  transform: isDragging
+                    ? `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`
+                    : slideDir === 'left'
                       ? 'translateX(-100%)'
                       : slideDir === 'right'
                         ? 'translateX(100%)'
                         : 'translateX(0)',
-                  transition: 'transform 0.25s ease-in-out',
+                  transition: isDragging ? 'none' : 'transform 0.25s ease-in-out',
                   opacity: slideDir ? 0 : 1,
+                  touchAction: 'none',
                 }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
               >
                 {/* Mandatory chip */}
                 <div className="mb-4">
@@ -334,9 +362,17 @@ export function PackingSessionPage() {
                 </div>
 
                 {/* Item name */}
-                <h2 className="font-headline font-bold text-3xl uppercase tracking-wide text-brand-text mb-4">
+                <h2 className="font-headline font-bold text-3xl uppercase tracking-wide text-brand-text mb-2">
                   {currentItem.name}
                 </h2>
+
+                {/* 3D Item Visualization */}
+                <Item3DViewer
+                  name={currentItem.name}
+                  category={currentItem.category ?? undefined}
+                  height={170}
+                  className="my-3 shadow-inner"
+                />
 
                 {/* Requirements */}
                 <p className="font-headline text-sm text-brand-muted uppercase tracking-wider mb-1">
@@ -363,10 +399,10 @@ export function PackingSessionPage() {
           <button
             onClick={goToNext}
             disabled={currentIndex >= remainingItems.length - 1 || isAnimating}
-            className="w-10 h-10 flex items-center justify-center border border-[#1A1A1A] font-headline font-bold text-brand-text disabled:opacity-30 shrink-0"
+            className="w-10 h-10 flex items-center justify-center border border-[#1A1A1A] font-headline font-bold text-brand-text disabled:opacity-30 shrink-0 hover:bg-black/5 transition-colors"
             aria-label="Next item"
           >
-            ▶
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -393,7 +429,11 @@ export function PackingSessionPage() {
             disabled={sessionLoading || isAnimating}
             className="flex-1 min-h-[52px] bg-[#FF4D00] text-white font-headline font-bold uppercase tracking-wider disabled:opacity-50"
           >
-            {sessionLoading ? '...' : 'PACKED ✓'}
+            {sessionLoading ? '...' : (
+              <span className="flex items-center justify-center gap-1.5">
+                PACKED
+              </span>
+            )}
           </button>
         </div>}
       </div>

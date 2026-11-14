@@ -14,10 +14,9 @@ export function WelcomePage() {
       <div className="flex flex-col items-center mt-24 mb-8">
         <div className="anim-logo w-44 h-44 mb-8">
           <img
-            src="/packplay-logo.jpg"
+            src="/packplay-logo.png"
             alt="PackPlay"
-            className="w-full h-full object-contain"
-            style={{ mixBlendMode: 'multiply' }}
+            className="w-full h-full object-contain drop-shadow-sm"
           />
         </div>
 

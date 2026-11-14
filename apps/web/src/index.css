@@ -12,6 +12,7 @@ body {
   color: #1C1B1B;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 input,
@@ -26,6 +27,29 @@ select {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ── Smooth Page & Component Transitions ── */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes fadeInUp {
@@ -53,12 +77,75 @@ select {
 
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-10px); }
+  50%       { transform: translateY(-8px); }
 }
 
-.anim-logo       { animation: logoBounce 0.7s cubic-bezier(.22,.68,0,1.2) both, float 3s ease-in-out 0.7s infinite; }
-.anim-heading    { animation: fadeInUp  0.5s ease-out 0.35s both; }
-.anim-quote      { animation: fadeInUp  0.5s ease-out 0.50s both; }
-.anim-divider    { animation: fadeIn    0.4s ease-out 0.65s both; }
-.anim-buttons    { animation: fadeInUp  0.5s ease-out 0.70s both; }
-.anim-footer     { animation: fadeIn    0.4s ease-out 0.95s both; }
+.animate-fadeIn    { animation: pageFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-modalIn   { animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.anim-logo         { animation: logoBounce 0.7s cubic-bezier(.22,.68,0,1.2) both, float 3s ease-in-out 0.7s infinite; }
+.anim-heading      { animation: fadeInUp  0.5s ease-out 0.35s both; }
+.anim-quote        { animation: fadeInUp  0.5s ease-out 0.50s both; }
+.anim-divider      { animation: fadeIn    0.4s ease-out 0.65s both; }
+.anim-buttons      { animation: fadeInUp  0.5s ease-out 0.70s both; }
+.anim-footer       { animation: fadeIn    0.4s ease-out 0.95s both; }
+
+/* ── Notification Bell & Dropdown Animations ── */
+@keyframes bellRing {
+  0% { transform: rotate(0); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(14deg); }
+  20%, 40%, 60%, 80% { transform: rotate(-14deg); }
+  100% { transform: rotate(0); }
+}
+
+@keyframes dropdownEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dropdownExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-6px);
+  }
+}
+
+.animate-bellRing {
+  animation: bellRing 1.2s ease-in-out both;
+  transform-origin: top center;
+}
+
+.animate-dropdownEnter {
+  animation: dropdownEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top right;
+}
+
+.animate-dropdownExit {
+  animation: dropdownExit 0.15s ease-in forwards;
+  transform-origin: top right;
+}
+
+/* ── Interactive Button Press Micro-interactions ── */
+button,
+a,
+[role="button"] {
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.2s ease-out,
+              border-color 0.2s ease-out,
+              color 0.2s ease-out,
+              opacity 0.2s ease-out;
+}
+
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+}

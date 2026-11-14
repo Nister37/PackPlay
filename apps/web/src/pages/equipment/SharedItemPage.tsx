@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check, ArrowLeft } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Item3DViewer } from '@/components/3d/Item3DViewer';
 import { useItemCoverage } from '@/hooks/useEquipment';
 import { useAuth } from '@/hooks/useAuth';
-import api from '@/lib/api';
+import { equipmentService } from '@/services/equipment.service';
 import type { SharedResponsibility } from '@/types';
 
 function getInitials(name: string): string {
@@ -60,7 +62,7 @@ export function SharedItemPage() {
 
   const claimMutation = useMutation({
     mutationFn: (quantity: number) =>
-      api.post(`/shared-items/${itemId}/claim`, { quantity }).then((r) => r.data),
+      equipmentService.claimResponsibility(itemId!, { quantity }),
     onSuccess: () => {
       invalidate();
       setShowClaimForm(false);
@@ -71,7 +73,7 @@ export function SharedItemPage() {
 
   const packMutation = useMutation({
     mutationFn: (quantity: number) =>
-      api.post(`/shared-items/${itemId}/pack`, { quantity }).then((r) => r.data),
+      equipmentService.packResponsibility(itemId!, { quantity }),
     onSuccess: () => {
       invalidate();
       setActionError('');
@@ -80,8 +82,7 @@ export function SharedItemPage() {
   });
 
   const releaseMutation = useMutation({
-    mutationFn: () =>
-      api.post(`/shared-items/${itemId}/release`).then((r) => r.data),
+    mutationFn: () => equipmentService.releaseResponsibility(itemId!),
     onSuccess: () => {
       invalidate();
       setActionError('');
@@ -91,7 +92,7 @@ export function SharedItemPage() {
 
   const extraMutation = useMutation({
     mutationFn: (quantity: number) =>
-      api.post(`/shared-items/${itemId}/extra`, { quantity }).then((r) => r.data),
+      equipmentService.addExtra(itemId!, { quantity }),
     onSuccess: () => {
       invalidate();
       setShowExtraForm(false);
@@ -102,10 +103,10 @@ export function SharedItemPage() {
 
   const transferMutation = useMutation({
     mutationFn: () =>
-      api.post(`/shared-items/${itemId}/transfer`, {
+      equipmentService.transferResponsibility(itemId!, {
         targetUserId: transferTargetId,
         quantity: userResponsibility?.quantity,
-      }).then((r) => r.data),
+      }),
     onSuccess: () => {
       invalidate();
       setShowTransferForm(false);
@@ -117,14 +118,14 @@ export function SharedItemPage() {
 
   const acceptTransferMutation = useMutation({
     mutationFn: (transferId: string) =>
-      api.post(`/shared-items/${itemId}/transfers/${transferId}/accept`).then((r) => r.data),
+      equipmentService.acceptTransfer(itemId!, transferId),
     onSuccess: invalidate,
     onError: () => setActionError('Transfer could not be accepted.'),
   });
 
   const reportMissingMutation = useMutation({
     mutationFn: (reason: 'FORGOT' | 'COULD_NOT_BRING' | 'REPLACEMENT_ARRANGED') =>
-      api.post(`/shared-items/${itemId}/report-missing`, { reason }).then((r) => r.data),
+      equipmentService.reportMissing(itemId!, { reason }),
     onSuccess: () => { invalidate(); setShowMissingReasons(false); },
     onError: () => setActionError('Failed to report the missing item.'),
   });
@@ -160,12 +161,12 @@ export function SharedItemPage() {
       <div className="pt-6 pb-2 flex items-start gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="font-headline font-bold text-brand-text text-lg leading-none mt-1"
+          className="font-headline font-bold text-brand-text text-lg leading-none mt-1 p-1 rounded hover:bg-brand-border/20 transition-colors"
           aria-label="Go back"
         >
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <div>
+        <div className="flex-1">
           {isLoading ? (
             <div className="h-7 w-40 bg-brand-border/10 rounded animate-pulse" />
           ) : (
@@ -180,6 +181,15 @@ export function SharedItemPage() {
           )}
         </div>
       </div>
+
+      {item && (
+        <Item3DViewer
+          name={item.name}
+          category={item.category}
+          height={200}
+          className="my-3 shadow-inner"
+        />
+      )}
 
       {/* Loading */}
       {isLoading && (
@@ -261,7 +271,7 @@ export function SharedItemPage() {
                           {resp.user.name}
                         </p>
                         {isPacked && (
-                          <span className="text-secondary font-bold text-sm">✓</span>
+                          <Check className="w-4 h-4 text-secondary stroke-[2.5]" />
                         )}
                       </div>
                       <p className="font-body text-xs text-brand-muted mt-0.5">
@@ -375,7 +385,9 @@ export function SharedItemPage() {
                   loading={packMutation.isPending}
                   className="bg-secondary border-secondary"
                 >
-                  MARK AS PACKED ✓
+                  <span className="flex items-center justify-center gap-1.5">
+                    MARK AS PACKED <Check className="w-4 h-4 stroke-[2.5]" />
+                  </span>
                 </Button>
                 {showTransferForm ? (
                   <div className="border border-brand-border p-4 bg-white space-y-3">

@@ -7,14 +7,23 @@ import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import type { Invitation, GroupMember } from '@/types';
+import type { GroupMember } from '@/types';
 
 interface InvitationInfo {
-  token: string;
-  group: Invitation['group'];
+  token?: string;
+  groupId?: string;
+  group?: {
+    id?: string;
+    name: string;
+    sport?: string;
+    sportType?: string;
+  };
+  groupName?: string;
+  sportType?: string;
+  memberCount?: number;
   expiresAt?: string;
   maxUses?: number;
-  useCount: number;
+  useCount?: number;
 }
 
 function formatDate(dateStr: string): string {
@@ -33,7 +42,7 @@ function isExpired(expiresAt?: string): boolean {
 
 function isMaxedOut(info: InvitationInfo): boolean {
   if (!info.maxUses) return false;
-  return info.useCount >= info.maxUses;
+  return (info.useCount ?? 0) >= info.maxUses;
 }
 
 export function JoinPage() {
@@ -136,11 +145,11 @@ export function JoinPage() {
           <Card className="mb-6">
             <div className="border-b border-brand-border pb-4 mb-4">
               <h1 className="font-headline font-bold text-2xl uppercase tracking-wider text-brand-text">
-                {inviteInfo.group.name}
+                {inviteInfo.group?.name || inviteInfo.groupName || 'Team Mission'}
               </h1>
-              {inviteInfo.group.sport && (
+              {(inviteInfo.group?.sport || inviteInfo.sportType) && (
                 <p className="font-headline text-sm uppercase tracking-wider text-primary mt-1">
-                  {inviteInfo.group.sport}
+                  {inviteInfo.group?.sport || inviteInfo.sportType}
                 </p>
               )}
             </div>
@@ -165,7 +174,7 @@ export function JoinPage() {
                     {maxedOut ? (
                       <span className="text-red-600">FULL</span>
                     ) : (
-                      `${inviteInfo.maxUses - inviteInfo.useCount} / ${inviteInfo.maxUses}`
+                      `${inviteInfo.maxUses - (inviteInfo.useCount ?? 0)} / ${inviteInfo.maxUses}`
                     )}
                   </p>
                 </div>
@@ -220,6 +229,13 @@ export function JoinPage() {
               >
                 JOIN MISSION
               </Button>
+            )}
+            {joinError && (inviteInfo?.groupId || inviteInfo?.group?.id) && (
+              <Link to={`/groups/${inviteInfo.groupId || inviteInfo.group?.id}`} className="block">
+                <Button variant="urgent" fullWidth>
+                  VIEW MISSION PAGE
+                </Button>
+              </Link>
             )}
             <Link to="/groups" className="block">
               <Button variant="ghost" fullWidth>

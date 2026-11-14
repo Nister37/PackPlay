@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Bell } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { Notification } from '@/types';
 
@@ -19,20 +20,51 @@ function formatTime(dateStr: string): string {
 export function NotificationBell() {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isRinging, setIsRinging] = useState(false);
+  const prevCountRef = useRef(unreadCount);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Trigger bell ringing wobble animation when unread notifications increase
+  useEffect(() => {
+    if (unreadCount > prevCountRef.current) {
+      setIsRinging(true);
+      const timer = setTimeout(() => setIsRinging(false), 1200);
+      return () => clearTimeout(timer);
+    }
+    prevCountRef.current = unreadCount;
+  }, [unreadCount]);
+
+  const handleClose = () => {
+    if (!open || isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setOpen(false);
+      setIsClosing(false);
+    }, 150);
+  };
+
+  const handleToggle = () => {
+    if (open) {
+      handleClose();
+    } else {
+      setOpen(true);
+      setIsClosing(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
 
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        handleClose();
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  }, [open, isClosing]);
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
@@ -44,21 +76,29 @@ export function NotificationBell() {
     <div ref={containerRef} className="relative">
       {/* Bell Button */}
       <button
-        onClick={() => setOpen(prev => !prev)}
+        onClick={handleToggle}
         className="relative flex items-center justify-center w-10 h-10 border border-brand-border bg-white hover:bg-brand-bg transition-colors"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
-        <span className="text-lg leading-none" role="img" aria-hidden="true">🔔</span>
+        <Bell
+          className={`w-5 h-5 text-brand-text transition-transform ${
+            isRinging ? 'animate-bellRing text-primary' : 'group-hover:scale-110'
+          }`}
+        />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-headline font-bold px-1 leading-none">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-headline font-bold px-1 leading-none shadow-sm">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 top-12 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-brand-border z-50 max-h-[480px] flex flex-col">
+      {/* Dropdown with open/close scale/fade animation */}
+      {(open || isClosing) && (
+        <div
+          className={`absolute right-0 top-12 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-brand-border z-50 max-h-[480px] flex flex-col shadow-xl ${
+            isClosing ? 'animate-dropdownExit' : 'animate-dropdownEnter'
+          }`}
+        >
           {/* Dropdown Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border flex-shrink-0">
             <h2 className="font-headline font-bold text-sm uppercase tracking-wider text-brand-text">

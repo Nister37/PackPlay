@@ -66,7 +66,33 @@ export function ChecklistsPage() {
           </form>
         </section>
 
-        <section><h2 className="font-headline font-bold uppercase mb-3">Your lists</h2>{isLoading ? <LoadingSpinner /> : <div className="space-y-3">{checklists.data?.map((checklist) => <Link key={checklist.id} to={`/checklists/${checklist.id}`} className="block border border-brand-border bg-white p-4"><div className="flex justify-between"><strong className="font-headline uppercase">{checklist.name}</strong>{checklist.isTemplate && <span className="text-xs text-success">TEMPLATE</span>}</div><p className="text-xs text-brand-muted mt-1">{checklist.activityType ?? 'ANY ACTIVITY'} · {checklist._count?.items ?? 0} items</p></Link>)}{checklists.data?.length === 0 && <p className="text-sm text-brand-muted">No personal checklists yet.</p>}</div>}</section>
+        <section>
+          <h2 className="font-headline font-bold uppercase mb-3">Your lists</h2>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <div className="space-y-3 group/lists">
+              {checklists.data?.map((checklist) => (
+                <Link
+                  key={checklist.id}
+                  to={`/checklists/${checklist.id}`}
+                  className="block border border-brand-border bg-white p-4 transition-all duration-300 ease-out rounded-lg group-hover/lists:opacity-60 group-hover/lists:scale-[0.98] group-hover/lists:grayscale hover:!opacity-100 hover:!scale-[1.03] hover:!grayscale-0 hover:!border-[#FF4D00] hover:!bg-[#FFF4EC] hover:shadow-md cursor-pointer"
+                >
+                  <div className="flex justify-between">
+                    <strong className="font-headline uppercase">{checklist.name}</strong>
+                    {checklist.isTemplate && <span className="text-xs text-success">TEMPLATE</span>}
+                  </div>
+                  <p className="text-xs text-brand-muted mt-1">
+                    {checklist.activityType ?? 'ANY ACTIVITY'} · {checklist._count?.items ?? 0} items
+                  </p>
+                </Link>
+              ))}
+              {checklists.data?.length === 0 && (
+                <p className="text-sm text-brand-muted">No personal checklists yet.</p>
+              )}
+            </div>
+          )}
+        </section>
       </div>
     </PageLayout>
   );

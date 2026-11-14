@@ -1,13 +1,25 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  Trash2,
+  ArrowLeft,
+  Settings,
+  Plus,
+  Send,
+} from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { LiveTakeoverAlert } from '@/components/notifications/LiveTakeoverAlert';
 import { useAuth } from '@/hooks/useAuth';
 import { claimLiveTakeoverAlert, getTopmostMissingItem } from '@/lib/liveTakeoverSession';
-import api from '@/lib/api';
+import { groupsService } from '@/services/groups.service';
+import { equipmentService } from '@/services/equipment.service';
 import type {
   Group,
   GroupMember,
@@ -63,8 +75,8 @@ function ItemManifest({ items }: { items: SharedItemWithCoverage[] }) {
                   {covered}/{total}
                 </span>
                 {isCovered ? (
-                  <span className="font-headline text-[10px] uppercase tracking-widest text-white bg-[#2D6A4F] px-1.5 py-0.5">
-                    ✓
+                  <span className="inline-flex items-center justify-center text-[10px] text-white bg-[#2D6A4F] px-1.5 py-0.5">
+                    <Check className="w-3 h-3 stroke-[2.5]" />
                   </span>
                 ) : (
                   <span className="font-headline text-[10px] uppercase tracking-widest text-white bg-primary px-1.5 py-0.5">
@@ -110,8 +122,9 @@ function ItemManifest({ items }: { items: SharedItemWithCoverage[] }) {
                 ))}
               </div>
             ) : (
-              <p className="font-headline text-[10px] uppercase tracking-widest text-primary mt-1">
-                ⚠ NO ONE ASSIGNED
+              <p className="font-headline text-[10px] uppercase tracking-widest text-primary mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                <span>NO ONE ASSIGNED</span>
               </p>
             )}
           </div>
@@ -128,48 +141,54 @@ export function GroupDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [broadcastClicked, setBroadcastClicked] = useState(false);
   const [takeoverItem, setTakeoverItem] = useState<SharedItemWithCoverage | null>(null);
   const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
+  // Group Query
   const {
     data: group,
     isLoading: groupLoading,
     isError: groupError,
   } = useQuery<Group>({
     queryKey: ['group', groupId],
-    queryFn: () => api.get(`/groups/${groupId}`).then((r) => r.data),
+    queryFn: () => groupsService.getGroup(groupId!),
     enabled: !!groupId,
   });
 
+  // Members Query
   const { data: members, isLoading: membersLoading } = useQuery<GroupMember[]>({
     queryKey: ['members', groupId],
-    queryFn: () => api.get(`/groups/${groupId}/members`).then((r) => r.data),
+    queryFn: () => groupsService.getGroupMembers(groupId!),
     enabled: !!groupId,
   });
 
+  // Activities Query
   const { data: activities, isLoading: activitiesLoading } = useQuery<GroupActivity[]>({
     queryKey: ['activities', groupId],
-    queryFn: () => api.get(`/groups/${groupId}/activities`).then((r) => r.data),
+    queryFn: () => groupsService.getGroupActivities(groupId!),
     enabled: !!groupId,
   });
 
   const activityId = activities?.[0]?.id;
 
   const myRole = members?.find((m) => m.userId === user?.id)?.role ?? null;
+  const canManage = myRole === 'OWNER' || myRole === 'ADMIN';
 
+  // Readiness Query
   const { data: readiness, isLoading: readinessLoading } = useQuery<GroupReadiness>({
     queryKey: ['readiness', activityId],
-    queryFn: () => api.get(`/activities/${activityId}/readiness`).then((r) => r.data),
+    queryFn: () => equipmentService.getActivityReadiness(activityId!),
     enabled: !!activityId,
   });
 
+  // Shared Items Query
   const { data: sharedItems, isLoading: itemsLoading } = useQuery<SharedItemWithCoverage[]>({
     queryKey: ['shared-items', activityId],
-    queryFn: () => api.get(`/activities/${activityId}/shared-items`).then((r) => r.data),
+    queryFn: () => equipmentService.listSharedItems(activityId!),
     enabled: !!activityId,
   });
 
+  // Takeover effect
   useEffect(() => {
     if (!groupId || !user?.id || itemsLoading) return;
 
@@ -185,8 +204,12 @@ export function GroupDetailPage() {
         (responsibility) =>
           responsibility.status === 'FORGOT' || responsibility.status === 'COULD_NOT_BRING',
       );
-      const endpoint = hasMissingOwner ? 'take-over' : 'claim';
-      return api.post(`/shared-items/${item.id}/${endpoint}`, {
+      if (hasMissingOwner) {
+        return equipmentService.takeOver(item.id, {
+          quantity: item.coverage.uncoveredQuantity,
+        });
+      }
+      return equipmentService.claimResponsibility(item.id, {
         quantity: item.coverage.uncoveredQuantity,
       });
     },
@@ -203,14 +226,105 @@ export function GroupDetailPage() {
     },
   });
 
+  // Create Activity Modal state & Mutation
+  const [showCreateActivity, setShowCreateActivity] = useState(false);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityType, setNewActivityType] = useState('TRAINING');
+  const [newActivityDate, setNewActivityDate] = useState('');
+
+  const createActivityMutation = useMutation({
+    mutationFn: () =>
+      groupsService.createActivity(groupId!, {
+        name: newActivityName.trim(),
+        activityType: newActivityType as any,
+        date: newActivityDate ? new Date(newActivityDate).toISOString() : undefined,
+      }),
+    onSuccess: (res) => {
+      setShowCreateActivity(false);
+      setNewActivityName('');
+      queryClient.invalidateQueries({ queryKey: ['activities', groupId] });
+      navigate(`/groups/${groupId}/activities/${res.id}`);
+    },
+  });
+
+  // Delete Activity Mutation
+  const deleteActivityMutation = useMutation({
+    mutationFn: (actId: string) => groupsService.deleteActivity(groupId!, actId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['readiness', activityId] });
+    },
+  });
+
+  // Member Management Mutations
   const removeMemberMutation = useMutation({
-    mutationFn: (memberId: string) => api.delete(`/groups/${groupId}/members/${memberId}`),
+    mutationFn: (memberId: string) => groupsService.removeMember(groupId!, memberId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', groupId] }),
   });
 
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role: 'ADMIN' | 'MEMBER' }) =>
+      groupsService.updateMemberRole(groupId!, memberId, role),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', groupId] }),
+  });
+
+  // Squad Capacity / Max Members
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [maxMembersInput, setMaxMembersInput] = useState<number | string>('');
+
+  useEffect(() => {
+    if (group?.maxMembers != null) {
+      setMaxMembersInput(group.maxMembers);
+    }
+  }, [group?.maxMembers]);
+
+  const updateGroupMutation = useMutation({
+    mutationFn: (data: { maxMembers?: number }) => groupsService.updateGroup(groupId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', groupId] });
+      setShowSettingsModal(false);
+    },
+  });
+
   const leaveGroupMutation = useMutation({
-    mutationFn: () => api.post(`/groups/${groupId}/leave`),
+    mutationFn: () => groupsService.leaveGroup(groupId!),
     onSuccess: () => navigate('/groups'),
+  });
+
+  // Broadcast Gear Reminder
+  const [broadcastFeedback, setBroadcastFeedback] = useState<string | null>(null);
+  const broadcastGearReminderMutation = useMutation({
+    mutationFn: () => {
+      if (!activityId) throw new Error('No active event scheduled to broadcast for.');
+      return groupsService.broadcastReminder(groupId!, activityId);
+    },
+    onSuccess: (res: any) => {
+      setBroadcastFeedback(`Gear reminder sent to ${res?.notifiedCount ?? 'squad'} member(s)!`);
+      setTimeout(() => setBroadcastFeedback(null), 4000);
+    },
+    onError: (err: any) => {
+      setBroadcastFeedback(err.response?.data?.message || 'Failed to send broadcast reminder.');
+      setTimeout(() => setBroadcastFeedback(null), 4000);
+    },
+  });
+
+  // Delete Group Slider Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [dragSliderX, setDragSliderX] = useState(0);
+  const [isSliderDragging, setIsSliderDragging] = useState(false);
+  const sliderTrackRef = useRef<HTMLDivElement>(null);
+  const sliderStartX = useRef(0);
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: () => groupsService.deleteGroup(groupId!),
+    onSuccess: () => {
+      navigate('/dashboard');
+    },
+    onError: () => {
+      alert('Failed to delete group.');
+      setShowDeleteModal(false);
+      setDragSliderX(0);
+    },
   });
 
   const isPageLoading = groupLoading || membersLoading || activitiesLoading;
@@ -233,7 +347,9 @@ export function GroupDetailPage() {
             <p className="font-body text-sm text-[#BA1A1A]">Failed to load group details.</p>
           </div>
           <Button variant="ghost" onClick={() => navigate('/groups')}>
-            ← BACK TO GROUPS
+            <span className="flex items-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" /> BACK TO GROUPS
+            </span>
           </Button>
         </div>
       </PageLayout>
@@ -271,10 +387,10 @@ export function GroupDetailPage() {
       <div className="bg-[#1A1A1A] mx-[-16px] px-4 pt-12 pb-4 flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="text-white text-xl font-bold leading-none w-8 h-8 flex items-center justify-center shrink-0"
+          className="text-white text-xl font-bold leading-none w-8 h-8 flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity"
           aria-label="Go back"
         >
-          ←
+          <ArrowLeft className="w-5 h-5 text-white" />
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-headline font-bold text-base text-white uppercase tracking-wide truncate">
@@ -315,13 +431,15 @@ export function GroupDetailPage() {
             </span>
           )}
           {hasActivity && !readinessLoading && uncoveredCount > 0 && (
-            <p className="font-headline text-xs uppercase tracking-widest text-primary mt-1">
-              ⚠ {uncoveredCount} ITEM{uncoveredCount !== 1 ? 'S' : ''} STILL NEEDED
+            <p className="font-headline text-xs uppercase tracking-widest text-primary mt-1 flex items-center justify-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{uncoveredCount} ITEM{uncoveredCount !== 1 ? 'S' : ''} STILL NEEDED</span>
             </p>
           )}
           {hasActivity && !readinessLoading && uncoveredCount === 0 && totalItems > 0 && (
-            <p className="font-headline text-xs uppercase tracking-widest text-[#2D6A4F] mt-1">
-              ALL ITEMS COVERED ✓
+            <p className="font-headline text-xs uppercase tracking-widest text-[#2D6A4F] mt-1 flex items-center justify-center gap-1.5">
+              <Check className="w-4 h-4 shrink-0 stroke-[2.5]" />
+              <span>ALL ITEMS COVERED</span>
             </p>
           )}
         </div>
@@ -339,11 +457,107 @@ export function GroupDetailPage() {
           </section>
         )}
 
-        {/* Squad */}
+        {/* Squad Events Section */}
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-brand-muted">
+              SQUAD EVENTS ({activities?.length ?? 0})
+            </p>
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCreateActivity(true)}
+                className="text-xs font-headline uppercase"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Schedule Event
+              </Button>
+            )}
+          </div>
+
+          {activities && activities.length > 0 ? (
+            <div className="bg-white border border-brand-border rounded-lg divide-y divide-brand-border">
+              {activities.map((act) => (
+                <div
+                  key={act.id}
+                  className="p-3 flex items-center justify-between hover:bg-brand-bg/40 transition-colors"
+                >
+                  <div className="flex-1 min-w-0 pr-3">
+                    <Link
+                      to={`/groups/${groupId}/activities/${act.id}`}
+                      className="font-headline font-bold text-sm uppercase text-brand-text hover:text-primary transition-colors truncate block"
+                    >
+                      {act.name}
+                    </Link>
+                    {(act.scheduledAt || act.date!) && (
+                      <p className="font-body text-xs text-brand-muted mt-0.5 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 shrink-0 text-brand-muted" />
+                        <span>{new Date(act.scheduledAt || act.date!).toLocaleDateString()}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      to={`/groups/${groupId}/activities/${act.id}`}
+                      className="px-2.5 py-1 text-xs border border-brand-border font-headline uppercase tracking-wider hover:bg-brand-bg rounded"
+                    >
+                      Open
+                    </Link>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete event "${act.name}"? This action cannot be undone.`)) {
+                            deleteActivityMutation.mutate(act.id);
+                          }
+                        }}
+                        disabled={deleteActivityMutation.isPending}
+                        className="p-1 border border-red-300 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete event"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white border border-brand-border rounded-lg p-5 text-center">
+              <p className="font-headline text-xs uppercase text-brand-muted">
+                No events scheduled yet.
+              </p>
+              {canManage && (
+                <Button
+                  variant="urgent"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setShowCreateActivity(true)}
+                >
+                  Create First Event
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Squad Members Section with Leader Powers */}
         <section className="mb-5">
-          <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-brand-muted mb-3">
-            SQUAD
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-brand-muted">
+              SQUAD {group.maxMembers ? `(${members?.length ?? 0}/${group.maxMembers})` : `(${members?.length ?? 0})`}
+            </p>
+            {myRole === 'OWNER' && (
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="font-headline text-[10px] uppercase text-primary underline flex items-center gap-1 hover:text-primary/80"
+              >
+                <Settings className="w-3 h-3" />
+                <span>Max Capacity: {group.maxMembers ?? 'No limit'}</span>
+              </button>
+            )}
+          </div>
 
           {members && members.length > 0 ? (
             <div className="bg-white border border-brand-border rounded-lg overflow-hidden">
@@ -369,11 +583,15 @@ export function GroupDetailPage() {
                         <p className="font-headline font-bold text-sm uppercase tracking-wide text-brand-text truncate">
                           {member.user?.name ?? 'Unknown'}
                         </p>
-                        {member.role === 'OWNER' && (
+                        {member.role === 'OWNER' ? (
                           <span className="font-headline text-[10px] uppercase tracking-wider border border-brand-border px-1.5 py-0.5 text-brand-muted ml-2 shrink-0">
                             OWNER
                           </span>
-                        )}
+                        ) : member.role === 'ADMIN' ? (
+                          <span className="font-headline text-[10px] uppercase tracking-wider border border-primary bg-primary/10 text-primary px-1.5 py-0.5 ml-2 shrink-0 font-bold">
+                            LEADER
+                          </span>
+                        ) : null}
                       </div>
 
                       {hasActivity && commitmentData && bringCount > 0 ? (
@@ -388,19 +606,46 @@ export function GroupDetailPage() {
                         <p className="font-body text-xs text-brand-muted">Nothing committed yet</p>
                       ) : null}
                     </div>
-                    {(myRole === 'OWNER' || myRole === 'ADMIN') &&
-                      member.userId !== user?.id && member.role !== 'OWNER' && (
+
+                    {/* Leader Controls */}
+                    {myRole === 'OWNER' && member.userId !== user?.id && member.role !== 'OWNER' && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        {member.role === 'ADMIN' ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateMemberRoleMutation.mutate({ memberId: member.id, role: 'MEMBER' })
+                            }
+                            disabled={updateMemberRoleMutation.isPending}
+                            className="min-h-[44px] px-1 font-headline text-[10px] uppercase text-brand-muted underline hover:text-black"
+                          >
+                            Set Member
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateMemberRoleMutation.mutate({ memberId: member.id, role: 'ADMIN' })
+                            }
+                            disabled={updateMemberRoleMutation.isPending}
+                            className="min-h-[44px] px-1 font-headline text-[10px] uppercase text-primary underline hover:text-primary/80 font-bold"
+                          >
+                            Make Leader
+                          </button>
+                        )}
                         <button
+                          type="button"
                           onClick={() => {
                             if (window.confirm(`Remove ${member.user?.name ?? 'this member'} from the group?`)) {
                               removeMemberMutation.mutate(member.id);
                             }
                           }}
-                          className="min-h-[44px] px-2 font-headline text-[10px] uppercase text-error underline"
+                          className="min-h-[44px] px-1 font-headline text-[10px] uppercase text-error underline"
                         >
                           Remove
                         </button>
-                      )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -412,77 +657,270 @@ export function GroupDetailPage() {
           )}
         </section>
 
-        {/* Action buttons */}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() =>
-              navigate(
-                activityId
-                  ? `/groups/${groupId}/packing?activityId=${activityId}`
-                  : `/groups/${groupId}/packing`,
-              )
-            }
-            className="flex-1 border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors"
-          >
-            PACKING
-          </button>
+        {/* Action buttons (Packing removed per request, keeping Equipment, Inventory, Calendar, Invite) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
           <button
             onClick={() => navigate(`/groups/${groupId}/equipment`)}
-            className="flex-1 border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors"
+            className="border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors rounded"
           >
             EQUIPMENT
           </button>
           <button
+            onClick={() => navigate(`/groups/${groupId}/inventory`)}
+            className="border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors rounded"
+          >
+            INVENTORY
+          </button>
+          <button
+            onClick={() => navigate(`/groups/${groupId}/calendar`)}
+            className="border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors rounded"
+          >
+            CALENDAR
+          </button>
+          <button
             onClick={() => navigate(`/groups/${groupId}/invite`)}
-            className="flex-1 border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors"
+            className="border border-[#1A1A1A] bg-white font-headline text-xs uppercase py-3 tracking-widest hover:bg-brand-bg transition-colors rounded"
           >
             INVITE
           </button>
         </div>
 
-        <div className="mt-3 mb-6">
-          <Button variant="ghost" fullWidth onClick={() => setBroadcastClicked(true)}>
-            BROADCAST GEAR REMINDER
+        {/* Broadcast Gear Reminder & Leave / Delete Actions */}
+        <div className="mt-4 mb-6 space-y-3">
+          <Button
+            variant="ghost"
+            fullWidth
+            disabled={!activityId || broadcastGearReminderMutation.isPending}
+            loading={broadcastGearReminderMutation.isPending}
+            onClick={() => broadcastGearReminderMutation.mutate()}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              <Send className="w-3.5 h-3.5" />
+              <span>BROADCAST GEAR REMINDER</span>
+            </span>
           </Button>
-          {broadcastClicked && (
-            <p className="text-center font-headline text-[10px] uppercase tracking-widest text-brand-muted mt-2">
-              Coming soon
+
+          {broadcastFeedback && (
+            <p className="text-center font-headline text-xs uppercase tracking-wider text-primary p-2 bg-primary/10 border border-primary rounded font-bold">
+              {broadcastFeedback}
             </p>
           )}
+
           {myRole === 'OWNER' && (
             <button
-              onClick={async () => {
-                if (
-                  !window.confirm(
-                    'Are you sure you want to delete this group? This action cannot be undone.',
-                  )
-                )
-                  return;
-                try {
-                  await api.delete(`/groups/${groupId}`);
-                  navigate('/dashboard');
-                } catch {
-                  alert('Failed to delete group.');
-                }
+              type="button"
+              onClick={() => {
+                setDragSliderX(0);
+                setShowDeleteModal(true);
               }}
-              className="w-full mt-3 min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors"
+              className="w-full min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors rounded"
             >
               DELETE GROUP
             </button>
           )}
+
           {myRole !== 'OWNER' && (
             <button
+              type="button"
               onClick={() => {
                 if (window.confirm('Leave this group?')) leaveGroupMutation.mutate();
               }}
               disabled={leaveGroupMutation.isPending}
-              className="w-full mt-3 min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 disabled:opacity-50"
+              className="w-full min-h-[44px] border border-red-400 bg-white font-headline font-bold text-xs uppercase tracking-widest text-red-600 disabled:opacity-50 rounded"
             >
               Leave group
             </button>
           )}
         </div>
       </div>
+
+      {/* Modal: Schedule Squad Event */}
+      {showCreateActivity && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-brand-border rounded-lg p-6 max-w-sm w-full space-y-4">
+            <h2 className="font-headline font-bold text-base uppercase">Schedule Squad Event</h2>
+            <Input
+              label="Event Name"
+              required
+              value={newActivityName}
+              onChange={(e) => setNewActivityName(e.target.value)}
+              placeholder="e.g. League Match vs Rovers"
+            />
+            <div>
+              <label className="block text-[10px] font-headline font-bold uppercase text-brand-muted mb-1">
+                Activity Type
+              </label>
+              <select
+                value={newActivityType}
+                onChange={(e) => setNewActivityType(e.target.value)}
+                className="w-full border border-brand-border p-2 bg-white text-xs"
+              >
+                <option value="TRAINING">Training</option>
+                <option value="COMPETITION">Competition</option>
+                <option value="CASUAL">Casual</option>
+                <option value="TRAVEL">Travel</option>
+              </select>
+            </div>
+            <Input
+              label="Date & Time"
+              type="datetime-local"
+              value={newActivityDate}
+              onChange={(e) => setNewActivityDate(e.target.value)}
+            />
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="ghost" onClick={() => setShowCreateActivity(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="urgent"
+                disabled={!newActivityName.trim() || createActivityMutation.isPending}
+                loading={createActivityMutation.isPending}
+                onClick={() => createActivityMutation.mutate()}
+              >
+                Create Event
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Squad Capacity (Max Members) */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-brand-border rounded-lg p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              <h2 className="font-headline font-bold text-base uppercase">Squad Capacity Settings</h2>
+            </div>
+            <p className="font-body text-xs text-brand-muted">
+              Configure the maximum number of squad members allowed to join this group.
+            </p>
+            <Input
+              label="Maximum Member Count"
+              type="number"
+              min={1}
+              max={500}
+              value={maxMembersInput}
+              onChange={(e) => setMaxMembersInput(e.target.value)}
+              placeholder="Leave empty for unlimited"
+            />
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="ghost" onClick={() => setShowSettingsModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="urgent"
+                loading={updateGroupMutation.isPending}
+                onClick={() => {
+                  const num = maxMembersInput !== '' ? Number(maxMembersInput) : undefined;
+                  updateGroupMutation.mutate({ maxMembers: num });
+                }}
+              >
+                Save Capacity
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Group with Drag Slider Confirmation */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border-2 border-red-500 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 border border-red-300 flex items-center justify-center text-red-600 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-headline font-bold text-base uppercase text-brand-text">
+                  Delete Squad?
+                </h3>
+                <p className="font-body text-xs text-brand-muted">
+                  Permanent action, cannot be undone
+                </p>
+              </div>
+            </div>
+            <p className="font-body text-xs text-brand-muted">
+              All events, equipment manifests, and squad records will be deleted immediately.
+            </p>
+
+            {/* Slider Track */}
+            <div className="space-y-2 pt-2">
+              <label className="block text-[10px] font-headline font-bold uppercase text-brand-muted text-center">
+                Slide button from left to right to delete
+              </label>
+              <div
+                ref={sliderTrackRef}
+                className="relative h-12 bg-red-50 border-2 border-red-300 rounded-full overflow-hidden select-none touch-none flex items-center"
+              >
+                {/* Progress fill */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 bg-red-500/25 pointer-events-none"
+                  style={{ width: `${dragSliderX + 44}px` }}
+                />
+
+                {/* Instruction Text */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="font-headline font-bold text-[10px] uppercase tracking-widest text-red-600">
+                    {dragSliderX > 140 ? 'RELEASE TO DELETE' : 'DRAG BUTTON TO DELETE ➔'}
+                  </span>
+                </div>
+
+                {/* Draggable Button */}
+                <div
+                  onPointerDown={(e) => {
+                    setIsSliderDragging(true);
+                    sliderStartX.current = e.clientX - dragSliderX;
+                    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+                  }}
+                  onPointerMove={(e) => {
+                    if (!isSliderDragging || !sliderTrackRef.current) return;
+                    const trackWidth = sliderTrackRef.current.clientWidth;
+                    const maxTravel = trackWidth - 48;
+                    const currentX = Math.max(0, Math.min(e.clientX - sliderStartX.current, maxTravel));
+                    setDragSliderX(currentX);
+                  }}
+                  onPointerUp={() => {
+                    if (!isSliderDragging || !sliderTrackRef.current) return;
+                    setIsSliderDragging(false);
+                    const trackWidth = sliderTrackRef.current.clientWidth;
+                    const maxTravel = trackWidth - 48;
+                    if (dragSliderX >= maxTravel * 0.85) {
+                      deleteGroupMutation.mutate();
+                    } else {
+                      setDragSliderX(0);
+                    }
+                  }}
+                  className="absolute left-1 w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10 transition-transform"
+                  style={{
+                    transform: `translateX(${dragSliderX}px)`,
+                    transition: isSliderDragging ? 'none' : 'transform 200ms ease-out',
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Cancel Button Below */}
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                fullWidth
+                disabled={deleteGroupMutation.isPending}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDragSliderX(0);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Takeover Alert */}
       {takeoverItem ? (
         <LiveTakeoverAlert
           item={takeoverItem}

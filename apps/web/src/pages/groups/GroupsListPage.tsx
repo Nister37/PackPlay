@@ -1,21 +1,18 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useGroups } from '@/hooks/useGroup';
+import { ArrowRight } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import api from '@/lib/api';
 import type { Group } from '@/types';
 
 export function GroupsListPage() {
   const {
-    data: groups,
+    groups,
     isLoading,
     isError,
-  } = useQuery<Group[]>({
-    queryKey: ['groups'],
-    queryFn: () => api.get('/groups').then((r) => r.data),
-  });
+  } = useGroups();
 
   return (
     <PageLayout>
@@ -82,7 +79,7 @@ export function GroupsListPage() {
                       </span>
                     )}
                     <span className="font-headline text-xs uppercase tracking-wider text-primary">
-                      VIEW →
+                      <span className="inline-flex items-center gap-1">VIEW <ArrowRight className="w-3.5 h-3.5" /></span>
                     </span>
                   </div>
                 </div>

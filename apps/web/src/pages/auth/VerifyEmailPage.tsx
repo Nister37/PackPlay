@@ -39,14 +39,26 @@ export function VerifyEmailPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Dark top section */}
-      <div className="bg-[#1A1A1A] px-6 pt-16 pb-10">
-        <p className="font-headline text-[10px] uppercase tracking-[0.2em] text-[#916F65] mb-3">
+      {/* Brand header */}
+      <div className="bg-[#FCF9F8] border-b border-brand-border/40 px-6 pt-12 pb-6 flex flex-col items-center text-center">
+        <Link to="/" className="flex flex-col items-center gap-2 group">
+          <img
+            src="/packplay-logo.png"
+            alt="PackPlay"
+            className="w-14 h-14 object-contain"
+          />
+          <div>
+            <span className="font-headline font-bold text-2xl tracking-wider text-[#1A1A1A] block leading-none">
+              PACKPLAY
+            </span>
+            <span className="font-headline text-[9px] uppercase tracking-widest text-[#FF4D00] block mt-1">
+              READINESS OS
+            </span>
+          </div>
+        </Link>
+        <p className="font-headline text-[10px] uppercase tracking-[0.2em] text-[#916F65] mt-4">
           EMAIL VERIFICATION
         </p>
-        <h1 className="font-headline font-bold text-4xl text-white uppercase tracking-tight">
-          GEARGUARDIAN
-        </h1>
       </div>
 
       {/* Content area */}

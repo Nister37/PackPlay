@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import api from '@/lib/api';
+import { groupsService } from '@/services/groups.service';
 import type { Invitation } from '@/types';
 
 function formatExpiry(dateStr: string): string {
@@ -24,7 +24,8 @@ export function InvitePage() {
 
   const { data: invitations, isLoading, error } = useQuery<Invitation[]>({
     queryKey: ['invitations', groupId],
-    queryFn: () => api.get(`/groups/${groupId}/invitations`).then(r => r.data),
+    queryFn: () => groupsService.getInvitations(groupId!),
+    enabled: !!groupId,
   });
 
   const activeInvitation = invitations?.[0];
@@ -34,20 +35,21 @@ export function InvitePage() {
 
   const createInvitation = useMutation({
     mutationFn: () =>
-      api.post(`/groups/${groupId}/invitations`, {
+      groupsService.createInvitation(groupId!, {
         expiresInHours: 168, // 7 days
         maxUses: 50,
-      }).then(r => r.data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invitations', groupId] });
     },
   });
 
   const regenerateInvitation = useMutation({
-    mutationFn: () => api.post(`/groups/${groupId}/invitations/regenerate`, {
-      expiresInHours: 168,
-      maxUses: 50,
-    }).then(r => r.data),
+    mutationFn: () =>
+      groupsService.regenerateInvitation(groupId!, {
+        expiresInHours: 168,
+        maxUses: 50,
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invitations', groupId] }),
   });
 
@@ -80,7 +82,7 @@ export function InvitePage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${activeInvitation?.group?.name ?? 'our group'} on GearGuardian`,
+          title: `Join ${activeInvitation?.group?.name ?? 'our group'} on PackPlay`,
           url: inviteLink,
         });
       } catch {
@@ -130,7 +132,7 @@ export function InvitePage() {
               <div className="bg-brand-border px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="font-headline font-bold text-xs uppercase tracking-widest text-white opacity-70">
-                    GEARGUARDIAN
+                    PACKPLAY
                   </p>
                   <p className="font-headline font-bold text-sm uppercase tracking-wider text-white">
                     {activeInvitation?.group?.name ?? 'GROUP INVITE'}

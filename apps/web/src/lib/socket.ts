@@ -1,7 +1,9 @@
 import { io, type Socket } from 'socket.io-client';
 
 export const createSocket = (token: string): Socket => {
-  return io('/packing', {
+  const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || '';
+  const url = rawBase ? `${rawBase.replace(/\/+$/, '')}/packing` : '/packing';
+  return io(url, {
     auth: { token },
     transports: ['websocket'],
   });

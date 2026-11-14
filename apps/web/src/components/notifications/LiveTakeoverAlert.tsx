@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { SharedItemWithCoverage } from '@/types';
 
 interface LiveTakeoverAlertProps {
@@ -87,9 +88,9 @@ export function LiveTakeoverAlert({
     }
   };
 
-  return (
+  const dialog = (
     <div
-      className="fixed inset-0 z-[60]"
+      className="fixed inset-0 z-[100]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="takeover-alert-title"
@@ -184,4 +185,10 @@ export function LiveTakeoverAlert({
       </section>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return dialog;
+  }
+
+  return createPortal(dialog, document.body);
 }

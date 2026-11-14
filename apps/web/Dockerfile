@@ -3,10 +3,11 @@ FROM node:22-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
+RUN npm run build
 
 EXPOSE 5173
 
-CMD ["npx", "vite", "--host"]
+CMD ["sh", "-c", "npx vite preview --host 0.0.0.0 --port ${PORT:-5173}"]

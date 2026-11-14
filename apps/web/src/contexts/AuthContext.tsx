@@ -10,6 +10,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  setSession: (tokens: { accessToken: string; refreshToken: string }, user: User) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -19,6 +20,7 @@ export const AuthContext = createContext<AuthContextValue>({
   login: async () => {},
   logout: async () => {},
   register: async () => {},
+  setSession: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -89,6 +91,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/register', { email, password, name });
   }, []);
 
+  const setSession = useCallback(
+    (tokens: { accessToken: string; refreshToken: string }, loggedInUser: User) => {
+      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      resetLiveTakeoverSession();
+      setUser(loggedInUser);
+
+      // Auto-join pending invite if present
+      const pendingInviteToken = localStorage.getItem('pendingInviteToken');
+      if (pendingInviteToken) {
+        localStorage.removeItem('pendingInviteToken');
+        api.post(`/invitations/${pendingInviteToken}/join`).catch(() => {});
+      }
+    },
+    [],
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -98,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         register,
+        setSession,
       }}
     >
       {children}

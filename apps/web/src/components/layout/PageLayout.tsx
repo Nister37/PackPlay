@@ -1,29 +1,23 @@
 import type { ReactNode } from 'react';
-import { NavBar } from '@/components/layout/NavBar';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface PageLayoutProps {
   children: ReactNode;
   hideNav?: boolean;
+  maxWidthClassName?: string;
 }
 
-export function PageLayout({ children, hideNav = false }: PageLayoutProps) {
+export function PageLayout({
+  children,
+  maxWidthClassName = 'max-w-md md:max-w-4xl lg:max-w-6xl',
+}: PageLayoutProps) {
   return (
-    <div className="min-h-screen bg-brand-bg">
-      <div
-        className="mx-auto relative"
-        style={{ maxWidth: '390px', paddingBottom: hideNav ? 0 : '80px' }}
+    <div className={`mx-auto relative w-full flex-1 ${maxWidthClassName}`}>
+      <main
+        className="px-4 pt-2 md:px-8 md:pt-6 animate-fadeIn pb-24 md:pb-12"
+        role="main"
       >
-        {!hideNav ? (
-          <header className="sticky top-0 z-40 flex justify-end px-4 pt-3 pointer-events-none">
-            <div className="pointer-events-auto">
-              <NotificationBell />
-            </div>
-          </header>
-        ) : null}
-        <div className="px-4">{children}</div>
-      </div>
-      {!hideNav && <NavBar />}
+        {children}
+      </main>
     </div>
   );
 }

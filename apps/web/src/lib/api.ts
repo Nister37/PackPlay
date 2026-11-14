@@ -1,7 +1,10 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
+const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || '';
+const baseURL = rawBase ? `${rawBase.replace(/\/+$/, '')}/api` : '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import api from '@/lib/api';
+import { equipmentService } from '@/services/equipment.service';
+import { groupsService } from '@/services/groups.service';
 import type { SharedItem, GroupActivity } from '@/types';
 
 export function EquipmentManifestPage() {
@@ -25,8 +28,10 @@ export function EquipmentManifestPage() {
   // If activityId not in URL, fetch first activity for the group
   const { data: activities } = useQuery<GroupActivity[]>({
     queryKey: ['group-activities', groupId],
-    queryFn: () =>
-      api.get(`/groups/${groupId}/activities`).then((r) => r.data),
+    queryFn: () => groupsService.getGroupActivities(groupId!),
+
+
+
     enabled: !!groupId && !activityIdFromParam,
   });
 
@@ -41,7 +46,7 @@ export function EquipmentManifestPage() {
   } = useQuery<SharedItem[]>({
     queryKey: ['shared-items', activityId],
     queryFn: () =>
-      api.get(`/activities/${activityId}/shared-items`).then((r) => r.data),
+      equipmentService.listSharedItems<SharedItem[]>(activityId!),
     enabled: !!activityId,
   });
 
@@ -112,7 +117,7 @@ export function EquipmentManifestPage() {
             className="font-headline font-bold text-brand-text text-lg leading-none"
             aria-label="Go back"
           >
-            ←
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="font-headline font-bold text-xl uppercase tracking-wider text-brand-text leading-tight">
@@ -296,7 +301,7 @@ export function EquipmentManifestPage() {
           size="lg"
           onClick={() => navigate(`/groups/${groupId}/invite`)}
         >
-          FINISH &amp; INVITE →
+          <span className="inline-flex items-center justify-center gap-1.5">FINISH &amp; INVITE <ArrowRight className="w-4 h-4" /></span>
         </Button>
       </div>
     </PageLayout>
